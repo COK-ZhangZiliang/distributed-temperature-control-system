@@ -8,7 +8,7 @@ from django.db.models import Q
 
 
 # 下面这个网站提供了详细的字段类型参考，请大家仔细比较，选择最优字段类型。
-# note: https://docs.djangoproject.com/zh-hans/2.2/ref/models/fields/#field-types
+# note: https://docs.djangoproject.com/zh-hans/5.0/ref/models/fields/#field-types
 
 
 class ServingQueue(models.Model):
@@ -651,29 +651,29 @@ class Server(models.Model):
 
 class Room(models.Model):
     FAN_SPEED = [
-        (3, "HIGH"),
-        (2, "MIDDLE"),
-        (1, "LOW"),
+        (3, "HIGH"),  # 高风速
+        (2, "MIDDLE"),  # 中风速
+        (1, "LOW"),  # 低风速
     ]
 
     ROOM_STATE = [
-        (1, "SERVING"),
-        (2, "WAITING"),
-        (3, "SHUTDOWN"),
+        (1, "SERVING"),  # 服务中
+        (2, "WAITING"),  # 等待
+        (3, "SHUTDOWN"),  # 关机
         (4, "BACKING")  # 休眠
     ]
 
     OPERATION_CHOICE = [
-        (1, '调温'),
-        (2, '调风'),
-        (3, '开机'),
-        (4, '关机')
+        (1, '调温'),  # 调温
+        (2, '调风'),  # 调风
+        (3, '开机'),  # 开机
+        (4, '关机')  # 关机
     ]
 
-    # 请求号
+    # 请求号,主键
     request_id = models.IntegerField(verbose_name="请求号", primary_key=True, default=0)
 
-    # 请求发出时间
+    # 请求发出时间,默认为当前时间
     request_time = models.DateTimeField(verbose_name="请求发出时间", default=django.utils.timezone.now)
 
     # 房间号，唯一表示房间
@@ -688,25 +688,25 @@ class Room(models.Model):
     # 目标温度
     target_temp = models.FloatField(verbose_name="目标温度", default=25.0)
 
-    # 风速
+    # 风速,默认为2,middle
     fan_speed = models.IntegerField(verbose_name='风速', choices=FAN_SPEED, default=2)
 
-    # 房间状态
+    # 房间状态,默认为3,关机状态
     state = models.IntegerField(verbose_name='服务状态', choices=ROOM_STATE, default=3)
 
-    # 费率
+    # 费率,默认为0.5
     fee_rate = models.FloatField(verbose_name='费率', default=0.5)
 
-    # 费用
+    # 费用,默认为0.0
     fee = models.FloatField(verbose_name='费用', default=0.0)
 
-    # 当前服务时长
+    # 当前服务时长,默认为0
     serve_time = models.IntegerField(verbose_name='当前服务时长', default=0)
 
-    # 当前等待时长
+    # 当前等待时长,默认为0
     wait_time = models.IntegerField(verbose_name='当前等待时长', default=0)
 
-    # 操作类型
+    # 操作类型,默认为3,开机
     operation = models.IntegerField(verbose_name='操作类型', choices=OPERATION_CHOICE, default=0)
 
     # 调度次数

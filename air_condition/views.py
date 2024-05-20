@@ -1,16 +1,13 @@
-# from django.http import HttpResponseRedirect, HttpResponse
-# from django.contrib import messages
 from django.shortcuts import render
 from air_condition.models import Scheduler, Room, StatisticController
 import numpy as np
-# import datetime
 
 # Create your views here.
 
 # ===============类================
 class RoomCounter:  # 分配房间号
-    num = 0
-    dic = {}
+    num = 0  # 当前已有房间数
+    dic = {}  # session_id: room_id,目的是每个session对应一个房间号
 
 
 class RoomInfo:  # Room->字典
@@ -86,12 +83,12 @@ state_ch = ["", "服务中", "等待", "关机", "休眠"]
 
 # ================函数 <顾客界面>  ==============
 def get_room_id(request):
-    s_id = request.session.session_key
+    s_id = request.session.session_key  # 获取session_id, 无则创建
     if s_id is None:
         request.session.create()
         s_id = request.session.session_key
 
-    if s_id not in room_c.dic:
+    if s_id not in room_c.dic:  # 未分配房间号
         room_c.num = room_c.num + 1
         room_c.dic[s_id] = room_c.num
         return room_c.num
