@@ -126,3 +126,52 @@ def power(request):  # 开关机
         room_buf.is_on[room_id] = False
         scheduler.request_off(room_id)
         return HttpResponseRedirect('/')
+
+
+def change_high(request):  # 高速
+    room_id = get_room_id(request)
+    if room_buf.is_on[room_id]:  # 开机才能调风速
+        scheduler.change_fan_speed(room_id, 1)
+        return HttpResponseRedirect('/on/')
+    else:
+        return HttpResponseRedirect('/')
+
+
+def change_mid(request):  # 中速
+    room_id = get_room_id(request)
+    if room_buf.is_on[room_id]:  # 开机才能调风速
+        scheduler.change_fan_speed(room_id, 2)
+        return HttpResponseRedirect('/on/')
+    else:
+        return HttpResponseRedirect('/')
+
+
+def change_low(request):  # 低速
+    room_id = get_room_id(request)
+    if room_buf.is_on[room_id]:  # 开机才能调风速
+        scheduler.change_fan_speed(room_id, 3)
+        return HttpResponseRedirect('/on/')
+    else:
+        return HttpResponseRedirect('/')
+
+
+def change_up(request):  # 升温
+    room_id = get_room_id(request)
+    if room_buf.is_on[room_id]:
+        temperature = room_buf.target_temp[room_id] + 1
+        room_buf.target_temp[room_id] = temperature  # 先把buffer里更新
+        scheduler.change_target_temp(room_id, temperature)  # 更新model里的数据库
+        return HttpResponseRedirect('/on/')
+    else:
+        return HttpResponseRedirect('/')
+
+
+def change_down(request):  # 降温
+    room_id = get_room_id(request)
+    if room_buf.is_on[room_id]:
+        temperature = room_buf.target_temp[room_id] - 1
+        room_buf.target_temp[room_id] = temperature  # 先把buffer里更新
+        scheduler.change_target_temp(room_id, temperature)  # 更新model里的数据库
+        return HttpResponseRedirect('/on/')
+    else:
+        return HttpResponseRedirect('/')

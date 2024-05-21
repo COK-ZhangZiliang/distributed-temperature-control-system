@@ -23,4 +23,9 @@ urlpatterns = [
     path('',  client_off),  # 默认页面
     path('on/', client_on),  # 开机
     path('power/', power),  # 开关机
+    path('high/', change_high),
+    path('mid/', change_mid),
+    path('low/', change_low),
+    path('up/', change_up),
+    path('down/', change_down),
 ]
