@@ -7,6 +7,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 
 
+# app先注册
+# python manage.py makemigrations
+# python manage.py migrate
+
 # 下面这个网站提供了详细的字段类型参考，请大家仔细比较，选择最优字段类型。
 # note: https://docs.djangoproject.com/zh-hans/5.0/ref/models/fields/#field-types
 
@@ -166,16 +170,17 @@ class Scheduler(models.Model):
     """
 
     STATE_CHOICE = [
-        (1, 'WORKING'),
-        (2, 'SHUTDOWN'),
-        (3, 'SETMODE'),
-        (4, 'READY')
+        (1, 'WORKING'),  # 工作中
+        (2, 'SHUTDOWN'),  # 关机
+        (3, 'SETMODE'),  # 设置模式
+        (4, 'READY')  # 就绪
     ]
 
     TEMP_CHOICE = [
-        (22, "制热"),
-        (25, "制冷")
+        (22, "制热"),  # 制热
+        (25, "制冷")  # 制冷
     ]
+
     # 第一次发出开机请求的房间数
     request_num = 0
 
@@ -203,13 +208,13 @@ class Scheduler(models.Model):
     # 中风速时的费率
     fee_rate_m = models.FloatField(verbose_name="中风速费率", default=0.5)
 
-    #  等待队列
+    # 等待队列
     WQ = WaitingQueue()
 
-    #  服务队列
+    # 服务队列
     SQ = ServingQueue()
 
-    #  存储5个房间,房间开始时的状态都是3--“SHUTDOWN”关机状态
+    # 存储5个房间,房间开始时的状态都是3--“SHUTDOWN”关机状态
     rooms = []
 
     def power_on(self):
@@ -218,7 +223,7 @@ class Scheduler(models.Model):
         初始化房间队列
         :return:
         """
-        Room.objects.all().delete()
+        Room.objects.all().delete()  # 相当于 delete all
         self.state = 3
         #  只要服务队列有房间就计费和计温,制热mode=1,制冷mode=2,
         if self.default_target_temp == 22:
@@ -247,7 +252,7 @@ class Scheduler(models.Model):
             if room.room_id == room_id:
                 room.init_temp = init_temp
 
-    def request_on(self, room_id, current_room_temp):
+    def request_on(self, room_id: int, current_room_temp: int):
         """
         一个请求到来，第一次开机分配房间对象然后处理，否则直接处理
         调用调度算法
@@ -322,7 +327,8 @@ class Scheduler(models.Model):
                     self.SQ.set_target_temp(room_id, target_temp)
                 elif room.state == 2:  # 在等待队列中
                     self.WQ.set_target_temp(room_id, target_temp)
-                else: room.target_temp = target_temp
+                else:
+                    room.target_temp = target_temp
 
                 # 写入数据库
                 room.request_id = self.request_id
@@ -379,7 +385,7 @@ class Scheduler(models.Model):
         """
         每分钟查看一次房间状态
         :param room_id:
-        :return:
+        :return: room
         """
         for room in self.rooms:
             # print(room.room_id)
@@ -739,6 +745,11 @@ class StatisticController(models.Model):
         :return:    返回详单字典列表
         """
         detail = []
+        # 相当于
+        # select * from Room
+        # where room_id=room_id and
+        #       request_time between begin_date and end_date
+        # order by request_time desc
         rdr = Room.objects.filter(room_id=room_id, request_time__range=(begin_date, end_date)).order_by('-request_time')
         for r in rdr:
             dic = {}
@@ -778,7 +789,7 @@ class StatisticController(models.Model):
                        "fee"]
 
         # 写入数据
-        with open("./result/detailed_list.csv", "w")as csvFile:
+        with open("./result/detailed_list.csv", "w") as csvFile:
             writer = csv.DictWriter(csvFile, file_header)
             writer.writeheader()
             # 写入的内容都是以列表的形式传入函数
@@ -939,7 +950,7 @@ class StatisticController(models.Model):
             data = []
             global report
             rows = []
-            for i in range(1,6):
+            for i in range(1, 6):
                 report = StatisticController.create_report(i, type_report, year, month, week)
                 data.append(list(report.values())[1:-2])
                 rows.append('room' + str(report['room_id']))
@@ -961,7 +972,7 @@ class StatisticController(models.Model):
             df = pd.DataFrame(data, columns=columns,
                               index=rows)
             # print(df)
-            df.plot(kind='barh', grid=True, colormap='YlGnBu', stacked=True,figsize=(15,5))  # 创建堆叠图
+            df.plot(kind='barh', grid=True, colormap='YlGnBu', stacked=True, figsize=(15, 5))  # 创建堆叠图
             print(data)
             data.reverse()
             table = plt.table(cellText=data,

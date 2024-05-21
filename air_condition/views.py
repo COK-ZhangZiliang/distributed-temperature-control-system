@@ -1,6 +1,9 @@
-from django.shortcuts import render
-from air_condition.models import Scheduler, Room, StatisticController
 import numpy as np
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
+
+from air_condition.models import Scheduler, StatisticController
+
 
 # Create your views here.
 
@@ -51,10 +54,10 @@ class RoomsInfo:  # 监控器使用
                 self.dic["fee_rate"].append(room.fee_rate)
 
 
-class RoomBuffer:  # 房间数据缓存
-    on_flag = [None, False, False, False, False, False]
-    target_temp = [0, 25, 25, 25, 25, 25]  # 不要用数组。。。。
-    init_temp = [0, 32, 28, 30, 29, 35]
+class RoomBuffer:  # 房间数据缓存,下标从1开始
+    is_on = [None, False, False, False, False, False]  # 房间是否开机,开机为True
+    target_temp = [0, 25, 25, 25, 25, 25]  # 目标温度,默认25
+    init_temp = [0, 32, 28, 30, 29, 35]  # 初始温度,也是户外温度
 
 
 class ChartData:
@@ -73,7 +76,7 @@ room_c = RoomCounter  # 静态
 room_info = RoomInfo
 scheduler = Scheduler()  # 属于model模块
 sc = StatisticController
-room_b = RoomBuffer
+room_buf = RoomBuffer
 speed_ch = ["", "高速", "中速", "低速"]
 state_ch = ["", "服务中", "等待", "关机", "休眠"]
 
@@ -95,10 +98,31 @@ def get_room_id(request):
     else:
         return room_c.dic[s_id]
 
-def client_off(request):  # 第一次访问客户端界面、开机
+
+def client_off(request):  # 第一次访问客户端界面、默认界面
     room_id = get_room_id(request)
     room = scheduler.update_room_state(room_id)
     if room:  # -----------之所以要判断，是因为第一次访问页面，room有未创建的风险
         return render(request, 'client-off.html', RoomInfo(room).dic)
-    else:  # 妹有room实例
+    else:  # 没有room实例
         return render(request, 'client-off.html', room_info.dic)
+
+
+def client_on(request):  # 开机后的界面
+    room_id = get_room_id(request)
+    room = scheduler.update_room_state(room_id)
+    return render(request, 'client-on.html', RoomInfo(room).dic)
+
+
+def power(request):  # 开关机
+    room_id = get_room_id(request)
+    # 从buf里获取房间状态,关机变开机，开机变关机
+    if not room_buf.is_on[room_id]:
+        room_buf.is_on[room_id] = True
+        scheduler.request_on(room_id, room_buf.init_temp[room_id])
+        scheduler.set_init_temp(room_id, room_buf.init_temp[room_id])
+        return HttpResponseRedirect('/on/')
+    else:
+        room_buf.is_on[room_id] = False
+        scheduler.request_off(room_id)
+        return HttpResponseRedirect('/')
