@@ -1,4 +1,4 @@
-# server
+# client
 
 ### requirements
 ```angular2html
@@ -16,3 +16,4 @@ django==5.0.6
 
 打开终端，运行`python manage.py migrate`，进行数据库迁移  
 再运行`python manage.py runserver`启动服务器
+
