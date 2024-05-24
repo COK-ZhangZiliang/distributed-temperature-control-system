@@ -14,14 +14,14 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
+# from django.contrib import admin
 from django.urls import path
 from air_condition.views import *
 
 urlpatterns = [
     # path('admin/', admin.site.urls),  # Django 默认页面
-    path('', log_in),
-    path('off/', client_off, name='client_off'),  # 默认页面
+    path('', log_in),  # 默认页面
+    path('off/', client_off, name='client_off'),
     path('on/', client_on),  # 开机
     path('power/', power),  # 开关机
     path('high/', change_high),
@@ -29,4 +29,13 @@ urlpatterns = [
     path('low/', change_low),
     path('up/', change_up),
     path('down/', change_down),
+
+    # 空调管理员
+    path('monitor/', monitor),
+    path('init_submit/', init_submit),
+    path('get_monitor_data/', get_monitor_data),
+
+    # 前台
+    path('recp/', reception_init, name='recp'),
+    path('recp_submit/', reception),
 ]

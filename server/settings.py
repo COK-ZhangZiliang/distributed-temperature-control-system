@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    "air_condition.apps.Air_conditionConfig"
+    "air_condition.apps.Air_conditionConfig",
 ]
 
 MIDDLEWARE = [
