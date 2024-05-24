@@ -40,18 +40,6 @@ body {
     border: solid 1px black;
 }
 
-/*.button_box {*/
-/*    width: 300px;*/
-/*    height: 40px;*/
-/*    margin-top: 20px;*/
-/*    margin-left: 50px;*/
-/*    border-radius: 20px;*/
-/*    border: solid white ;*/
-/*    background-color: #a172a1;*/
-/*    cursor: pointer;*/
-/*    color: #fff;*/
-/*}*/
-
 .logo_box {
     position: absolute;
     background-color: #fff;

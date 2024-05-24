@@ -13,7 +13,6 @@ button {
     height: 50px;
 }
 
-
 #container { /*容器*/
     display: flex;
     flex-wrap: wrap;
@@ -82,8 +81,8 @@ button {
 }
 
 #info_box_unit {
-    margin-right: 50px;
-    margin-left: 50px;
+    margin-right: 40px;
+    margin-left: 40px;
 }
 
 #const_set {
