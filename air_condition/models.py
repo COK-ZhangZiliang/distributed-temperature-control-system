@@ -374,7 +374,7 @@ class Scheduler(models.Model):
 
     def check_room_state(self):
         """
-        每分钟查看一次房间状态
+        每5秒查看一次房间状态
         :return:
         """
         timer = threading.Timer(5, self.check_room_state)  # 每五秒执行一次check函数,list_room为参数
@@ -442,7 +442,7 @@ class Scheduler(models.Model):
                 self.request_id += 1
                 room.operation = 4
                 room.request_time = timezone.now()
-                room.save(force_insert=True)
+                room.save()
 
                 # 开启调度函数
 
