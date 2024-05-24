@@ -342,8 +342,8 @@ class Scheduler(models.Model):
         每5秒查看一次房间状态
         :return:
         """
-        timer = threading.Timer(5, self.check_room_state)  # 每五秒执行一次check函数,list_room为参数
-        timer.start()
+        # timer = threading.Timer(5, self.check_room_state)  # 每五秒执行一次check函数,list_room为参数
+        # timer.start()
         return self.rooms
 
     def update_room_state(self, room_id):
