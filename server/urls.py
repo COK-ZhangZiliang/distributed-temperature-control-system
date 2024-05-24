@@ -20,7 +20,8 @@ from air_condition.views import *
 
 urlpatterns = [
     # path('admin/', admin.site.urls),  # Django 默认页面
-    path('',  client_off),  # 默认页面
+    path('', log_in),
+    path('off/', client_off, name='client_off'),  # 默认页面
     path('on/', client_on),  # 开机
     path('power/', power),  # 开关机
     path('high/', change_high),
