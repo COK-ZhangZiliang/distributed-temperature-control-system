@@ -104,7 +104,7 @@ def log_in(request):  # 用户登录界面
         elif usertype == "2":  # 前台
             return redirect('recp')
         elif usertype == "3":  # 空调管理员
-            return redirect('init')
+            return redirect('monitor')
         else:
             # 如果凭据无效，返回登录页面并显示错误信息
             return render(request, 'log-in.html', {'error': 'Invalid username or password'})
