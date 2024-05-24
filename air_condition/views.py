@@ -1,6 +1,7 @@
 import numpy as np
+from django.contrib.auth import login
 from django.http import HttpResponseRedirect
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
 from air_condition.models import Scheduler, StatisticController
 
@@ -99,7 +100,36 @@ def get_room_id(request):
         return room_c.dic[s_id]
 
 
-def client_off(request):  # 第一次访问客户端界面、默认界面
+def log_in(request):  # 用户登录界面
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        usertype = 0
+
+        with open('air_condition/user.txt', 'r') as file:
+            # 逐行读取文件
+            for line in file:
+                # 使用split()方法按空格分割每行
+                columns = line.strip().split()  # strip()去除行首尾的空白字符
+
+                if username == columns[0]:
+                    if password == columns[1]:
+                        usertype = columns[2]
+
+        if usertype == "1":
+            return redirect('client_off')
+        elif usertype == "2":
+            pass
+        elif usertype == "3":
+            pass
+        else:
+            # 如果凭据无效，返回登录页面并显示错误信息
+            return render(request, 'log-in.html', {'error': 'Invalid username or password'})
+
+    return render(request, 'log-in.html')
+
+
+def client_off(request):  # 第一次访问客户端界面
     room_id = get_room_id(request)
     room = scheduler.update_room_state(room_id)
     if room:  # -----------之所以要判断，是因为第一次访问页面，room有未创建的风险
