@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, IntegrityError
 from django.utils import timezone
 import threading
 import django
@@ -15,152 +15,111 @@ from django.db.models import Q
 # note: https://docs.djangoproject.com/zh-hans/5.0/ref/models/fields/#field-types
 
 
-class ServingQueue(models.Model):
+class RoomQueue(models.Model):
     """
-    正在服务的队列，存放所有正在服务的房间对象
+    队列基类，存放所有房间对象
     """
-    # 在调度队列中的房间对象
-    # 注：不确定这么写好不好，我觉得serve_time应该和房间对象绑定在一起可能会好一点。
-    # 如果有更好的类型，请替换。
-    room_list = []
+    queue_type = models.CharField(verbose_name='队列类型', max_length=20, default='serving')
+    objects_num = models.IntegerField(verbose_name='队列中对象数目', default=0)
 
-    serving_num = models.IntegerField(verbose_name='服务对象数', default=0)
+    class Meta:
+        abstract = True
 
     def __init__(self):
         super().__init__()
-        self.serving_num = 0
+        self.objects_num = 0
 
     def insert(self, room):
-        room.state = 1
+        room.state = 1 if self.queue_type == 'serving' else 2
         room.scheduling_num += 1
-        self.room_list.append(room)
-        self.room_list.sort(key=lambda x: (x.fan_speed))  # 按照风速排序,服务队列中风速优先
-        self.serving_num += 1
-        return True
-
-    #  修改温度
-    def set_target_temp(self, room_id, target_temp):
-        for room in self.room_list:
-            if room.room_id == room_id:
-                room.target_temp = target_temp
-                break
-        return True
-
-    #  修改风速
-    def set_fan_speed(self, room_id, fan_speed, fee_rate):
-        for room in self.room_list:
-            if room.room_id == room_id:
-                room.fan_speed = fan_speed
-                room.fee_rate = fee_rate
-                self.room_list.sort(key=lambda x: (x.fan_speed))  # 按照风速排序,服务队列中风速优先
-                break
+        self.rooms.add(room)
+        self.sort_rooms()
+        self.objects_num += 1
         return True
 
     def delete_room(self, room):
-        """
-        从调度队列删除对应的房间
-        :param room:
-        :return:
-        """
-        self.room_list.remove(room)
-        self.serving_num -= 1
+        self.rooms.remove(room)
+        self.objects_num -= 1
         return True
 
+    def sort_rooms(self):
+        self.rooms.set(self.rooms.order_by('fan_speed'))
+
+    def set_target_temp(self, room_id, target_temp):
+        room = self.rooms.filter(room_id=room_id).first()
+        print(room.request_id)
+        print(target_temp)
+        room.target_temp = target_temp
+        room.save()
+        return True
+
+    def set_fan_speed(self, room_id, fan_speed, fee_rate):
+        room = self.rooms.filter(room_id=room_id).first()
+        room.fan_speed = fan_speed
+        room.fee_rate = fee_rate
+        room.save()
+        self.sort_rooms()
+        return True
+
+
+class ServingQueue(RoomQueue):
+    """
+    服务队列，存放正在服务的房间对象
+    """
+    queue_type = 'serving'
+    rooms = models.ManyToManyField('Room', related_name='ServingQueue')
+
+    def __init__(self):
+        super().__init__()
+
     def update_serve_time(self):
-        if self.serving_num != 0:
-            for room in self.room_list:
-                room.serve_time += 1
-        timer = threading.Timer(60, self.update_serve_time)  # 每1min执行一次函数
+        for room in self.rooms.all():
+            room.serve_time += 1
+        timer = threading.Timer(60, self.update_serve_time)  # 每1min执行一次
         timer.start()
 
     def auto_fee_temp(self, mode):
         """
-        回温和计费函数，设定风速H:1元/min,即0.016元/s,回温2℃/min，即0.03℃/s
-        M:0.5元/min,即0.008元/s,回温1.5℃/min，即0.025℃/s
-        L:0.3元/min,即0.005元/s,回温1℃/min，即0.016℃/s
-        mode=1,制热
-        mode=2,制冷
+        自动计费和计温
+        :param mode: 制热mode=1,制冷mode=2
+        5元/标准功率
+        对于每分钟：
+            高速1.2标准功率，中速1标准功率，低速0.8标准功率
+            高速2°C回温度，中速1.5°C回温度，低速1°C回温度
+        每秒钟自动计算一次
         :return:
         """
-        if mode == 1:
-            for room in self.room_list:
-                if room.fan_speed == 1:
-                    room.fee += 0.016
-                    room.current_temp += 0.03
-                elif room.fan_speed == 2:
-                    room.fee += 0.008
-                    room.current_temp += 0.025
-                else:
-                    room.fee += 0.005
-                    room.current_temp += 0.016
-            timer = threading.Timer(1, self.auto_fee_temp, [1])  # 每1秒执行一次函数
-            timer.start()
-        else:
-            for room in self.room_list:
-                if room.fan_speed == 1:
-                    room.fee += 0.016
-                    room.current_temp -= 0.03
-                elif room.fan_speed == 2:
-                    room.fee += 0.008
-                    room.current_temp -= 0.025
-                else:
-                    room.fee += 0.005
-                    room.current_temp -= 0.016
-            timer = threading.Timer(1, self.auto_fee_temp, [2])  # 每1秒执行一次函数
-            timer.start()
+        modes = [0, 1, -1]
+        for room in self.rooms.all():
+            if room.fan_speed == 3:
+                room.fee += 1.2 / 60 * 5
+                room.current_temp += 2 / 60 * modes[mode]
+            elif room.fan_speed == 2:
+                room.fee += 1 / 60 * 5
+                room.current_temp += 1.5 / 60 * modes[mode]
+            else:
+                room.fee += 0.8 / 60 * 5
+                room.current_temp += 1 / 60 * modes[mode]
+        timer = threading.Timer(1,  self.auto_fee_temp, [mode])
+        timer.start()
 
 
-class WaitingQueue(models.Model):
+class WaitingQueue(RoomQueue):
     """
-    等待队列，存放所有等待服务的房间对象
+    等待队列，存放等待服务的房间对象
     """
-    room_list = []
-
-    waiting_num = models.IntegerField(verbose_name='等待对象数', default=0)
+    queue_type = 'waiting'
+    rooms = models.ManyToManyField('Room', related_name='WaitingQueue')
 
     def __init__(self):
         super().__init__()
-        self.waiting_num = 0
-
-    def set_target_temp(self, room_id, target_temp):
-        for room in self.room_list:
-            if room.room_id == room_id:
-                room.target_temp = target_temp
-                break
-        return True
-
-    def set_fan_speed(self, room_id, fan_speed, fee_rate):
-        for room in self.room_list:
-            if room.room_id == room_id:
-                room.fan_speed = fan_speed
-                room.fee_rate = fee_rate
-                break
-        return True
-
-    def delete_room(self, room):
-        """
-        从等待队列删除对应的房间
-        :param room:
-        :return:
-        """
-        self.room_list.remove(room)
-        self.waiting_num -= 1
-        return True
-
-    #   参数用room对象更好，
-    def insert(self, room):
-        room.state = 2
-        room.scheduling_num += 1
-        self.room_list.append(room)
-        self.waiting_num += 1
-        return True
 
     def update_wait_time(self):
-        if self.waiting_num != 0:
-            for room in self.room_list:
-                room.wait_time += 1
-        timer = threading.Timer(60, self.update_wait_time)  # 每1min执行一次函数
+        for room in self.rooms.all():
+            room.wait_time += 1
+        timer = threading.Timer(60, self.update_wait_time)  # 每1min执行一次
         timer.start()
+
 
 
 class Scheduler(models.Model):
@@ -210,12 +169,14 @@ class Scheduler(models.Model):
 
     # 等待队列
     WQ = WaitingQueue()
+    WQ.save()
 
     # 服务队列
     SQ = ServingQueue()
+    SQ.save()
 
     # 存储5个房间,房间开始时的状态都是3--“SHUTDOWN”关机状态
-    rooms = []
+    rooms = models.ManyToManyField('Room', related_name='scheduler')  # Room和Scheduler是多对多关系
 
     def power_on(self):
         """
@@ -248,7 +209,7 @@ class Scheduler(models.Model):
         :param init_temp:
         :return:
         """
-        for room in self.rooms:
+        for room in self.rooms.all():
             if room.room_id == room_id:
                 room.init_temp = init_temp
 
@@ -262,13 +223,12 @@ class Scheduler(models.Model):
         :param current_room_temp:
         :return:
         """
-        return_room = Room(request_id=self.request_id)
         flag = 1
-        for room in self.rooms:
+        for room in self.rooms.all():
             if room.room_id == room_id:  # 不是第一次开机，直接处理
                 room.current_temp = current_room_temp
                 flag = 0
-                if self.SQ.serving_num < 3:  # 服务队列未满
+                if self.SQ.objects_num < 3:  # 服务队列未满
                     self.SQ.insert(room)
                 else:  # 服务队列已满
                     self.WQ.insert(room)
@@ -281,15 +241,20 @@ class Scheduler(models.Model):
                 room.operation = 3
                 room.save()
         if flag == 1:  # 是第一次开机，先分配房间对象再处理
-            temp_room = return_room
-            self.request_num += 1  # 发出第一次开机请求的房间数加一
-            if self.request_num > 5:  # 控制只能有五个房间开机
-                return False  # 返回
+            while True:
+                try:
+                    # 创建新的Room对象并确保request_id唯一
+                    temp_room = Room.objects.using('default').create(request_id=self.request_id)
+                    self.request_id += 1  # 确保request_id递增以保证唯一性
+                    break
+                except IntegrityError:
+                    # 如果request_id重复，增加request_id并重试
+                    self.request_id += 1
 
             temp_room.room_id = room_id
             temp_room.current_temp = current_room_temp
-            self.rooms.append(temp_room)
-            if self.SQ.serving_num < 3:  # 服务队列未满
+            self.rooms.add(temp_room)
+            if self.SQ.objects_num < 3:  # 服务队列未满
                 self.SQ.insert(temp_room)
             else:  # 服务队列已满
                 self.WQ.insert(temp_room)
@@ -321,23 +286,23 @@ class Scheduler(models.Model):
             target_temp = 18
         if target_temp > 28:
             target_temp = 28
-        for room in self.rooms:
-            if room.room_id == room_id:
-                if room.state == 1:  # 在调度队列中
-                    self.SQ.set_target_temp(room_id, target_temp)
-                elif room.state == 2:  # 在等待队列中
-                    self.WQ.set_target_temp(room_id, target_temp)
-                else:
-                    room.target_temp = target_temp
+        for room in self.rooms.all():
+            if room.state == 1:  # 在调度队列中
+                self.SQ.set_target_temp(room_id, target_temp)
+                print(room.target_temp)
+            elif room.state == 2:  # 在等待队列中
+                self.WQ.set_target_temp(room_id, target_temp)
+            else:
+                room.target_temp = target_temp
 
-                # 写入数据库
-                room.request_id = self.request_id
-                self.request_id += 1
-                room.operation = 1
-                room.request_time = timezone.now()
-                room.save()
+            # 写入数据库
+            room.request_id = self.request_id
+            self.request_id += 1
+            room.operation = 1
+            room.request_time = timezone.now()
+            room.save()
 
-                return room
+            return room
 
     def change_fan_speed(self, room_id, fan_speed):
         """
@@ -354,7 +319,7 @@ class Scheduler(models.Model):
             fee_rate = self.fee_rate_h
         else:
             fee_rate = self.fee_rate_l  # 低风速时的费率
-        for room in self.rooms:
+        for room in self.rooms.all():
             if room.room_id == room_id:
                 if room.state == 1:  # 在调度队列中
                     self.SQ.set_fan_speed(room_id, fan_speed, fee_rate)
@@ -387,7 +352,7 @@ class Scheduler(models.Model):
         :param room_id:
         :return: room
         """
-        for room in self.rooms:
+        for room in self.rooms.all():
             # print(room.room_id)
             if room.room_id == room_id:
                 return room
@@ -425,7 +390,7 @@ class Scheduler(models.Model):
         :param room_id:
         :return:
         """
-        for room in self.rooms:
+        for room in self.rooms.all():
             if room.room_id == room_id:
                 room.current_temp = room.init_temp
                 #  关机回到初始温度
@@ -442,16 +407,16 @@ class Scheduler(models.Model):
                 self.request_id += 1
                 room.operation = 4
                 room.request_time = timezone.now()
-                room.save(force_insert=True)
+                room.save()
 
                 # 开启调度函数
 
-                if self.WQ.waiting_num != 0 and self.SQ.serving_num == 2:
+                if self.WQ.objects_num != 0 and self.SQ.objects_num == 2:
                     temp = self.WQ.room_list[0]
                     self.WQ.delete_room(temp)
                     self.SQ.insert(temp)
 
-                elif self.WQ.waiting_num != 0 and self.SQ.serving_num <= 1:
+                elif self.WQ.objects_num != 0 and self.SQ.objects_num <= 1:
                     i = 1
                     for temp in self.WQ.room_list:
                         if i <= 2:
@@ -459,7 +424,7 @@ class Scheduler(models.Model):
                             self.SQ.insert(temp)
                         i += 1
 
-                elif self.WQ.waiting_num != 0 and self.SQ.serving_num <= 0:
+                elif self.WQ.objects_num != 0 and self.SQ.objects_num <= 0:
                     i = 1
                     for temp in self.WQ.room_list:
                         if i <= 3:
@@ -475,7 +440,7 @@ class Scheduler(models.Model):
             if mode == 1:
                 room.current_temp -= 0.008
                 if abs(room.target_temp - room.current_temp) > 1:
-                    if self.SQ.serving_num < 3:  # 服务队列没满
+                    if self.SQ.objects_num < 3:  # 服务队列没满
                         self.SQ.insert(room)
                     else:
                         self.WQ.insert(room)
@@ -484,7 +449,7 @@ class Scheduler(models.Model):
             else:
                 room.current_temp += 0.008
                 if abs(room.target_temp - room.current_temp) > 1 and room.current_temp > room.target_temp:
-                    if self.SQ.serving_num < 3:  # 服务队列没满
+                    if self.SQ.objects_num < 3:  # 服务队列没满
                         self.SQ.insert(room)
                     else:
                         self.WQ.insert(room)
@@ -496,7 +461,7 @@ class Scheduler(models.Model):
         每分钟，遍历服务队列中的房间，将达到目标温度的房间移出服务队列，状态设为休眠
         :return:
         """
-        if self.SQ.serving_num != 0:
+        if self.SQ.objects_num != 0:
             for room in self.SQ.room_list:
                 if abs(room.current_temp - room.target_temp) < 0.1 or room.current_temp < room.target_temp:
                     room.state = 4
@@ -505,7 +470,7 @@ class Scheduler(models.Model):
                         self.back_temp(room, 1)
                     else:
                         self.back_temp(room, 2)
-        if self.WQ.waiting_num != 0:
+        if self.WQ.objects_num != 0:
             for room in self.WQ.room_list:
                 if abs(room.current_temp - room.target_temp) < 0.1 or room.current_temp < room.target_temp:
                     room.state = 4
@@ -526,7 +491,7 @@ class Scheduler(models.Model):
         把SQ的第一个加入WQ，WQ的第一个放入SQ末尾
         :return:
         """
-        if self.WQ.waiting_num != 0 and self.SQ.serving_num == 3:
+        if self.WQ.objects_num != 0 and self.SQ.objects_num == 3:
             temp = self.SQ.room_list[0]
             self.SQ.delete_room(temp)
             self.WQ.insert(temp)
@@ -534,12 +499,12 @@ class Scheduler(models.Model):
             self.WQ.delete_room(temp)
             self.SQ.insert(temp)
 
-        elif self.WQ.waiting_num != 0 and self.SQ.serving_num == 2:
+        elif self.WQ.objects_num != 0 and self.SQ.objects_num == 2:
             temp = self.WQ.room_list[0]
             self.WQ.delete_room(temp)
             self.SQ.insert(temp)
 
-        elif self.WQ.waiting_num != 0 and self.SQ.serving_num <= 1:
+        elif self.WQ.objects_num != 0 and self.SQ.objects_num <= 1:
             i = 1
             for temp in self.WQ.room_list:
                 if i <= 2:
@@ -547,7 +512,7 @@ class Scheduler(models.Model):
                     self.SQ.insert(temp)
                 i += 1
 
-        elif self.WQ.waiting_num != 0 and self.SQ.serving_num <= 0:
+        elif self.WQ.objects_num != 0 and self.SQ.objects_num <= 0:
             i = 1
             for temp in self.WQ.room_list:
                 if i <= 3:
@@ -620,6 +585,10 @@ class Room(models.Model):
 
     # 调度次数
     scheduling_num = models.IntegerField(verbose_name='调度次数', default=0)
+
+    def __str__(self):
+        return f"room_id:{self.room_id}, current_temp:{self.current_temp}, target_temp:{self.target_temp}, " \
+                  f"fan_speed:{self.fan_speed}, fee:{self.fee}, fee_rate:{self.fee_rate}"
 
 
 class StatisticController(models.Model):

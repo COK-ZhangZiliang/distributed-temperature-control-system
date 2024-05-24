@@ -74,7 +74,7 @@ class ChartData:
 # ============静态变量===========
 room_c = RoomCounter  # 静态
 room_info = RoomInfo
-scheduler = Scheduler()  # 属于model模块
+scheduler = Scheduler.objects.using('default').create()
 sc = StatisticController
 room_buf = RoomBuffer
 speed_ch = ["", "高速", "中速", "低速"]
@@ -159,6 +159,7 @@ def change_up(request):  # 升温
     room_id = get_room_id(request)
     if room_buf.is_on[room_id]:
         temperature = room_buf.target_temp[room_id] + 1
+        print(temperature)
         room_buf.target_temp[room_id] = temperature  # 先把buffer里更新
         scheduler.change_target_temp(room_id, temperature)  # 更新model里的数据库
         return HttpResponseRedirect('/on/')
