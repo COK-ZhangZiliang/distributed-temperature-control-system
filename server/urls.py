@@ -29,4 +29,18 @@ urlpatterns = [
     path('low/', change_low),
     path('up/', change_up),
     path('down/', change_down),
+
+    # 空调管理员
+    path('init/', init, name='init'),
+    path('init_submit/', init_submit),
+    path('monitor/', monitor),
+
+    # 前台
+    path('recp/', reception_init),
+    path('recp_submit/', reception),
+
+    # 经理
+    path('manager/', manager),
+    path('manager_month/', manager_month),
+    path('manager_week/', manager_week),
 ]
