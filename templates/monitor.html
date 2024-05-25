@@ -7,7 +7,7 @@
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="all,follow">
-    <title>�յ�����ϵͳ</title>
+    <title>空调管理系统</title>
     <link rel="shortcut icon" href="img/favicon.ico">
     <link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
@@ -21,7 +21,7 @@
         <!-- MAIN NAVBAR -->
         <header class="header">
             <nav class="navbar navbar-expand-lg">
-                <h3 class='col-sm-12' style="text-align:center">�յ�����ϵͳ</h3>
+                <h3 class='col-sm-12' style="text-align:center">空调管理系统</h3>
             </nav>
         </header>
 
@@ -31,21 +31,21 @@
             <nav class="side-navbar">
                 <ul class="list-unstyled">
                     <li><a href="#welcome-section"><i class="fa fa-home"></i>Welcome</a></li>
-                    <li><a href="#parameter-settings"><i class="fa fa-cog"></i>�����������</a></li>
-                    <li><a href="#monitor-section"><i class="fa fa-tv"></i>����״̬���</a></li>
+                    <li><a href="#parameter-settings"><i class="fa fa-cog"></i>房间参数设置</a></li>
+                    <li><a href="#monitor-section"><i class="fa fa-tv"></i>房间状态监控</a></li>
                 </ul>
             </nav>
 
             <div class="content-inner form-cont">
                 <div id="welcome-section" style="display:none;">
-                    <h1>��ӭʹ�ÿյ�����ϵͳ!</h1>
-                    <h3>��ͨ�����Ϸ��˵�ѡ����Ҫ���еĲ���</h3>
+                    <h1>欢迎使用空调管理系统!</h1>
+                    <h3>请通过左上方菜单选择需要进行的操作</h3>
                 </div>
 
                 <div id="parameter-settings" style="display:none;">
                     <div class="card form">
                         <div class="card-header">
-                            <h5>�����������</h5>
+                            <h5>房间参数设置</h5>
                         </div>
                         <br>
                         <div class="form-wrapper">
@@ -53,37 +53,37 @@
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label for="mode">ģʽ</label>
+                                        <label for="mode">模式</label>
                                         <select class="form-control" id="mode" name="mode">
-                                            <option value="cold">����</option>
-                                            <option value="hot">����</option>
+                                            <option value="cold">制冷</option>
+                                            <option value="hot">制热</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label>�¶ȷ�Χ</label>
+                                        <label>温度范围</label>
                                         <div class="row">
                                             <div class="col">
-                                                <input class="form-control" name="high" id="high" placeholder="����¶�">
+                                                <input class="form-control" name="high" id="high" placeholder="最高温度">
                                             </div>
                                             <div class="col">
-                                                <input class="form-control" name="low" id="low" placeholder="����¶�">
+                                                <input class="form-control" name="low" id="low" placeholder="最低温度">
                                             </div>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label for="default">Ĭ���¶�</label>
+                                        <label for="default">默认温度</label>
                                         <input class="form-control" id="default" name="default" value="25">
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label for="fan_speed">Ĭ�Ϸ���</label>
+                                        <label for="fan_speed">默认风速</label>
                                         <select class="form-control" id="fan_speed">
-                                            <option value="low">����</option>
-                                            <option value="middle" selected>����</option>
-                                            <option value="high">����</option>
+                                            <option value="low">低速</option>
+                                            <option value="middle" selected>中速</option>
+                                            <option value="high">高速</option>
                                         </select>
-                                        <label for="fee_h">���ʣ�Ԫ/���ӣ�</label>
+                                        <label for="fee_h">费率（元/分钟）</label>
                                         <input class="form-control" id="fee_h" name="fee_h" value="1">
                                         <input class="form-control" id="fee_m" name="fee_m" value="0.5">
                                         <input class="form-control" id="fee_l" name="fee_l" value="0.3">
@@ -91,27 +91,27 @@
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label>��������</label>
+                                        <label>房间设置</label>
                                         <div class="row">
                                             <div class="col">
                                                 <select class="form-control" id="room_number">
-                                                    <option value="1">1�ŷ���</option>
-                                                    <option value="2">2�ŷ���</option>
-                                                    <option value="3">3�ŷ���</option>
-                                                    <option value="4">4�ŷ���</option>
-                                                    <option value="5">5�ŷ���</option>
+                                                    <option value="1">1号房间</option>
+                                                    <option value="2">2号房间</option>
+                                                    <option value="3">3号房间</option>
+                                                    <option value="4">4号房间</option>
+                                                    <option value="5">5号房间</option>
                                                 </select>
                                             </div>
                                             <div class="col">
-                                                <input class="form-control" placeholder="���뷿���ʼ�¶�" id="initial_temp" name="initial_temp">
+                                                <input class="form-control" placeholder="输入房间初始温度" id="initial_temp" name="initial_temp">
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="button-container">
-                                <input type="submit" class="btn btn-general" value="ȷ���ύ">
-                                <button type="reset" class="btn btn-general">ȡ��</button>
+                                <input type="submit" class="btn btn-general" value="确认提交">
+                                <button type="reset" class="btn btn-general">取消</button>
                             </div>
                         </form>
                         </div>
@@ -122,28 +122,28 @@
                 <div id="monitor-section" style="display:none;">
                     <div class="card form">
                         <div class="card-header">
-                            <h5>����״̬���</h5>
+                            <h5>房间状态监控</h5>
                         </div>
                         <br>
-                        <div id="monitor-data"> <!-- ���ݼ������� -->
+                        <div id="monitor-data"> <!-- 数据加载区域 -->
 
                         </div>
                     </div>
                 </div>
                 <script>
-                    // ��ʱ���¼������
+                    // 定时更新监控数据
                     setInterval(function() {
                         $.ajax({
                             url: '/get_monitor_data',
                             type: 'GET',
                             success: function(data) {
-                                $('#monitor-data').html(data); // ���¼��������ʾ����
+                                $('#monitor-data').html(data); // 更新监控数据显示区域
                             },
                             error: function(xhr, textStatus, errorThrown) {
                                 console.log('Error:', errorThrown);
                             }
                         });
-                    }, 1000); // ÿ1���Ӹ���һ�μ������
+                    }, 1000); // 每1秒钟更新一次监控数据
                 </script>
             </div>
         </div>

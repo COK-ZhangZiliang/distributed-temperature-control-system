@@ -1,8 +1,7 @@
 import numpy as np
-from django.contrib.auth import login
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect
 from django.shortcuts import render, redirect
-from django.contrib import messages
+
 from air_condition.models import Scheduler, StatisticController
 
 
@@ -18,7 +17,7 @@ class RoomInfo:  # Room->字典
     dic = {
         "target_temp": "--",
         "init_temp": "--",
-        "current_temp": "--",
+        "current_temp": 0,
         "fan_speed": "--",
         "fee": 0,
         "room_id": 0
@@ -89,8 +88,7 @@ def log_in(request):  # 用户登录界面
         password = request.POST['password']
         usertype = 0
 
-
-        with open('air_condition/user.txt', 'r') as file:
+        with open('air_condition/user.txt', 'r', encoding='utf8') as file:
             # 逐行读取文件
             for line in file:
                 # 使用split()方法按空格分割每行
@@ -178,7 +176,8 @@ def reception(request):
         #file = open('./result/detailed_list.csv', 'rb')
         #response = FileResponse(file)
 
-        response = {"房间号":1,"使用记录1":"30min,2024.5.24 8：00-2024.5.24 8：30","消费1":"10元","使用记录2":"30min,2024.5.24 11：00-2024.5.24 11：30","消费2":"10元"}
+        response = {"房间号": 1, "使用记录1": "30min,2024.5.24 8：00-2024.5.24 8：30", "消费1": "10元",
+                    "使用记录2": "30min,2024.5.24 11：00-2024.5.24 11：30", "消费2": "10元"}
         #response['Content-Type'] = 'application/octet-stream'
         #response['Content-Disposition'] = 'attachment;filename="detailed_list.csv"'
         # return response
@@ -198,7 +197,7 @@ def reception(request):
         #from django.http import FileResponse
         #file = open('./result/bill.csv', 'rb')
         #response = FileResponse(file)
-        response = {"房间号": 1, "使用时长":"1小时","消费": "20元"}
+        response = {"房间号": 1, "使用时长": "1小时", "消费": "20元"}
         #response['Content-Type'] = 'application/octet-stream'
         #response['Content-Disposition'] = 'attachment;filename="bill.csv"'
         request.session['info_dict'] = response
@@ -206,14 +205,18 @@ def reception(request):
         return HttpResponseRedirect('/bill')
         #return response
 
+
 def reception_bill(request):
     return render(request, 'reception_bill.html')
+
 
 def reception_details(request):
     return render(request, 'reception_details.html')
 
+
 def reception_return(request):
     return HttpResponseRedirect('/recp')
+
 
 # ================函数 <顾客界面>  ==============
 def get_room_id(request):
