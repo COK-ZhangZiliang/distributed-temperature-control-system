@@ -10,132 +10,175 @@
     <title>空调管理系统</title>
     <link rel="shortcut icon" href="img/favicon.ico">
     <link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/static/font-awesome-4.7.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="/static/css/font-icon-style.css">
-    <link rel="stylesheet" href="/static/css/style.default.css" id="theme-stylesheet">
-    <link rel="stylesheet" href="/static/css/form.css">
-    <link rel="stylesheet" href="/static/css/my-client.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/admin-style.css">
     <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script>
+
 </head>
 
 <body>
-    <!-- MAIN NAVBAR -->
-    <header class="header">
-        <nav class="navbar navbar-expand-lg">
-            <h3 class='col-sm-12' style="text-align:center">空调管理系统</h3>
-        </nav>
-    </header>
+    <div class="outer-wrapper">
+        <!-- MAIN NAVBAR -->
+        <header class="header">
+            <nav class="navbar navbar-expand-lg">
+                <h3 class='col-sm-12' style="text-align:center">空调管理系统</h3>
+            </nav>
+        </header>
 
-    <!-- PAGE CONTENT -->
-    <div class="page-content d-flex align-items-stretch">
-        <!-- SIDE NAVBAR -->
-        <nav class="side-navbar">
-            <div class="sidebar-header d-flex align-items-center">
-                <div class="avatar"></div>
-                <div class="title">
-                    <h4 class="h4">切换身份</h4>
+        <!-- PAGE CONTENT -->
+        <div class="page-content d-flex align-items-stretch">
+            <!-- SIDE NAVBAR -->
+            <nav class="side-navbar">
+                <ul class="list-unstyled">
+                    <li><a href="#welcome-section"><i class="fa fa-home"></i>Welcome</a></li>
+                    <li><a href="#parameter-settings"><i class="fa fa-cog"></i>房间参数设置</a></li>
+                    <li><a href="#monitor-section"><i class="fa fa-tv"></i>房间状态监控</a></li>
+                </ul>
+            </nav>
+
+            <div class="content-inner form-cont">
+                <div id="welcome-section" style="display:none;">
+                    <h1>欢迎使用空调管理系统!</h1>
+                    <h3>请通过左上方菜单选择需要进行的操作</h3>
                 </div>
-            </div>
-            <hr>
-            <ul class="list-unstyled">
-                <li> <a href="/monitor"><i class="icon-home"></i>空调管理员</a></li>
-                <li> <a href="/recp"><i class="fa fa-bar-chart"></i>前台</a></li>
-            </ul>
-            <span class="heading">Extras</span>
-            <ul class="list-unstyled">
-                <li> <a href="#"><i class="icon-picture"></i>Demo</a></li>
-            </ul>
-        </nav>
 
-        <div class="content-inner form-cont">
-            <div class="row">
-                <div class="col-md-12">
-
-                    <!-- PARAMETER SETTING FORM -->
-                    <div class="card form" id="form1">
+                <div id="parameter-settings" style="display:none;">
+                    <div class="card form">
                         <div class="card-header">
-                            <h5>参数设置</h5>
+                            <h5>房间参数设置</h5>
                         </div>
                         <br>
+                        <div class="form-wrapper">
                         <form action="/init_submit" method="get">
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label for="exampleSelect1">模式</label>
-                                        <select class="form-control" name="mode">
+                                        <label for="mode">模式</label>
+                                        <select class="form-control" id="mode" name="mode">
                                             <option value="cold">制冷</option>
                                             <option value="hot">制热</option>
                                         </select>
+                                    </div>
+                                    <div class="form-group">
                                         <label>温度范围</label>
-                                        <input class="form-control" name="high" placeholder="最高温度">
-                                        <input class="form-control" name="low" placeholder="最低温度">
-                                        <label>默认温度</label>
-                                        <input class="form-control" name="default" value="25">
+                                        <div class="row">
+                                            <div class="col">
+                                                <input class="form-control" name="high" id="high" placeholder="最高温度">
+                                            </div>
+                                            <div class="col">
+                                                <input class="form-control" name="low" id="low" placeholder="最低温度">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="default">默认温度</label>
+                                        <input class="form-control" id="default" name="default" value="25">
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label for="exampleSelect1">默认风速</label>
-                                        <select class="form-control" id="exampleSelect1">
+                                        <label for="fan_speed">默认风速</label>
+                                        <select class="form-control" id="fan_speed">
                                             <option value="low">低速</option>
                                             <option value="middle" selected>中速</option>
                                             <option value="high">高速</option>
                                         </select>
-                                        <label>费率（元/分钟）</label>
-                                        <input class="form-control" value="1" name="fee_h">
-                                        <input class="form-control" value="0.5" name="fee_m">
-                                        <input class="form-control" value="0.3" name="fee_l">
-                                        <small id="emailHelp" class="form-text text-muted">这里可以写备注，但我不知道写点啥。</small>
+                                        <label for="fee_h">费率（元/分钟）</label>
+                                        <input class="form-control" id="fee_h" name="fee_h" value="1">
+                                        <input class="form-control" id="fee_m" name="fee_m" value="0.5">
+                                        <input class="form-control" id="fee_l" name="fee_l" value="0.3">
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label>房间初始温度</label>
-                                        <input class="form-control" placeholder="1号" name="r1">
-                                        <input class="form-control" placeholder="2号" name="r2">
-                                        <input class="form-control" placeholder="3号" name="r3">
-                                        <input class="form-control" placeholder="4号" name="r4">
-                                        <input class="form-control" placeholder="5号" name="r5">
+                                        <label>房间设置</label>
+                                        <div class="row">
+                                            <div class="col">
+                                                <select class="form-control" id="room_number">
+                                                    <option value="1">1号房间</option>
+                                                    <option value="2">2号房间</option>
+                                                    <option value="3">3号房间</option>
+                                                    <option value="4">4号房间</option>
+                                                    <option value="5">5号房间</option>
+                                                </select>
+                                            </div>
+                                            <div class="col">
+                                                <input class="form-control" placeholder="输入房间初始温度" id="initial_temp" name="initial_temp">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <input type="submit" class="btn btn-general btn-blue mr-2" value="确认提交">
-                            <button type="reset" class="btn btn-general btn-white">取消</button>
+                            <div class="button-container">
+                                <input type="submit" class="btn btn-general" value="确认提交">
+                                <button type="reset" class="btn btn-general">取消</button>
+                            </div>
                         </form>
+                        </div>
                     </div>
+                </div>
 
-                    <!-- MONITORING SECTION -->
-                    <div class="card form" id="form2">
+                <!-- Monitoring Section -->
+                <div id="monitor-section" style="display:none;">
+                    <div class="card form">
                         <div class="card-header">
-                            <h5>监视界面</h5>
+                            <h5>房间状态监控</h5>
                         </div>
                         <br>
-                        <div id="monitor-section">
-                            <!-- Monitor data will be loaded here via AJAX -->
-                            <script>
-                                // 定时更新监控数据
-                                setInterval(function() {
-                                    $.ajax({
-                                        url: '/get_monitor_data',
-                                        type: 'GET',
-                                        success: function(data) {
-                                            $('#monitor-section').html(data); // 更新监控数据显示区域
-                                        },
-                                        error: function(xhr, textStatus, errorThrown) {
-                                            console.log('Error:', errorThrown);
-                                        }
-                                    });
-                                }, 5000); // 每5秒钟更新一次监控数据
-                            </script>
+                        <div id="monitor-data"> <!-- 数据加载区域 -->
+
                         </div>
-
                     </div>
-
                 </div>
+                <script>
+                    // 定时更新监控数据
+                    setInterval(function() {
+                        $.ajax({
+                            url: '/get_monitor_data',
+                            type: 'GET',
+                            success: function(data) {
+                                $('#monitor-data').html(data); // 更新监控数据显示区域
+                            },
+                            error: function(xhr, textStatus, errorThrown) {
+                                console.log('Error:', errorThrown);
+                            }
+                        });
+                    }, 1000); // 每1秒钟更新一次监控数据
+                </script>
             </div>
         </div>
-    </div>
+     </div>
+
+    <script>
+        function toggleSections() {
+            var section = window.location.hash.substring(1) || "welcome-section";
+            var sections = document.querySelectorAll('.content-inner > div');
+            sections.forEach(function(sec) {
+                sec.style.display = 'none';
+            });
+            var activeSection = document.getElementById(section);
+            if(activeSection) {
+                activeSection.style.display = 'block';
+            }
+        }
+        window.addEventListener('hashchange', function() {
+            var section = window.location.hash.substring(1);
+            var sections = document.querySelectorAll('.content-inner > div');
+            sections.forEach(function(sec) {
+                sec.style.display = 'none';
+            });
+            var activeSection = document.getElementById(section);
+            if(activeSection) {
+                activeSection.style.display = 'block';
+            }
+        });
+
+        if(window.location.hash) {
+            window.dispatchEvent(new Event('hashchange'));
+        }
+
+        toggleSections();
+    </script>
 
 </body>
 
