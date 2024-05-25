@@ -1,5 +1,5 @@
 import numpy as np
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render, redirect
 
 from air_condition.models import Scheduler, StatisticController
@@ -113,21 +113,43 @@ def log_in(request):  # 用户登录界面
 
 
 # ============================管理员=============================
-def init_submit(request):
+def mon_submit(request):
     request.encoding = 'utf-8'
-    high = int(request.GET['high'])
-    low = int(request.GET['low'])
-    default = int(request.GET['default'])
-    fee_h = float(request.GET['fee_h'])
-    fee_m = float(request.GET['fee_m'])
-    fee_l = float(request.GET['fee_l'])
-    for i in range(1, 6):
-        room_buf.init_temp[i] = int(request.GET['r' + str(i)])
+    print(list(request.GET.items()))
 
-    print(room_buf.init_temp)
+    # 检查每个参数是否存在并且不为空
+    for param in ['mode', 'high', 'low', 'default', 'fee_h', 'fee_m', 'fee_l', 'initial_temp', 'room_number']:
+        if param not in request.GET or not request.GET[param]:
+            return HttpResponse(
+                '<script>alert("Missing or empty parameter: {}");window.location.href="/monitor";</script>'.format(
+                    param))
+
+    try:
+        mode = request.GET['mode']  # 'code' or 'hot'
+        high = int(request.GET['high'])
+        low = int(request.GET['low'])
+        default = int(request.GET['default'])
+        fee_h = float(request.GET['fee_h'])
+        fee_m = float(request.GET['fee_m'])
+        fee_l = float(request.GET['fee_l'])
+        init_temp = int(request.GET['initial_temp'])
+        room_number = int(request.GET['room_number'])
+    except ValueError:
+        return HttpResponse('<script>alert("Invalid value for a parameter");window.location.href="/monitor";</script>')
+
+    # 检查参数是否满足要求
+    if high < low:
+        return HttpResponse(
+            '<script>alert("High temperature must be greater than or equal to low temperature");window.location.href="/monitor";</script>')
+    if not low <= default <= high:
+        return HttpResponse(
+            '<script>alert("Default temperature must be within the range [low, high]");window.location.href="/monitor";</script>')
+
+    room_buf.init_temp[room_number] = init_temp
     scheduler.set_para(high, low, default, fee_h, fee_l, fee_m)
     scheduler.power_on()
     scheduler.start_up()
+
     return HttpResponseRedirect('/monitor')
 
 
@@ -169,17 +191,17 @@ def reception(request):
         # sc.print_rdr(room_id, begin_date, end_date)
         # return HttpResponseRedirect('/reception_init/')
         # 首先先生成详单
-        #StatisticController.print_rdr(room_id, begin_date, end_date)
+        # StatisticController.print_rdr(room_id, begin_date, end_date)
 
         # 获取详单，返回生成的文件
-        #from django.http import FileResponse
-        #file = open('./result/detailed_list.csv', 'rb')
-        #response = FileResponse(file)
+        # from django.http import FileResponse
+        # file = open('./result/detailed_list.csv', 'rb')
+        # response = FileResponse(file)
 
         response = {"房间号": 1, "使用记录1": "30min,2024.5.24 8：00-2024.5.24 8：30", "消费1": "10元",
                     "使用记录2": "30min,2024.5.24 11：00-2024.5.24 11：30", "消费2": "10元"}
-        #response['Content-Type'] = 'application/octet-stream'
-        #response['Content-Disposition'] = 'attachment;filename="detailed_list.csv"'
+        # response['Content-Type'] = 'application/octet-stream'
+        # response['Content-Disposition'] = 'attachment;filename="detailed_list.csv"'
         # return response
         request.session['info_dict'] = response
         # 重定向
@@ -191,19 +213,19 @@ def reception(request):
         """打印账单"""
 
         # 首先先生成账单
-        #StatisticController.print_bill(room_id, begin_date, end_date)
+        # StatisticController.print_bill(room_id, begin_date, end_date)
 
         # 获取账单，返回生成的文件
-        #from django.http import FileResponse
-        #file = open('./result/bill.csv', 'rb')
-        #response = FileResponse(file)
+        # from django.http import FileResponse
+        # file = open('./result/bill.csv', 'rb')
+        # response = FileResponse(file)
         response = {"房间号": 1, "使用时长": "1小时", "消费": "20元"}
-        #response['Content-Type'] = 'application/octet-stream'
-        #response['Content-Disposition'] = 'attachment;filename="bill.csv"'
+        # response['Content-Type'] = 'application/octet-stream'
+        # response['Content-Disposition'] = 'attachment;filename="bill.csv"'
         request.session['info_dict'] = response
         # 重定向
         return HttpResponseRedirect('/bill')
-        #return response
+        # return response
 
 
 def reception_bill(request):
