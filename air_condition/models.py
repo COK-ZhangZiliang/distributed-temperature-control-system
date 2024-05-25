@@ -100,7 +100,7 @@ class ServingQueue(RoomQueue):
             else:
                 room.fee += 0.8 / 60 * 5
                 room.current_temp += 1 / 60 * modes[mode]
-        timer = threading.Timer(1,  self.auto_fee_temp, [mode])
+        timer = threading.Timer(1, self.auto_fee_temp, [mode])
         timer.start()
 
 
@@ -119,7 +119,6 @@ class WaitingQueue(RoomQueue):
             room.wait_time += 1
         timer = threading.Timer(60, self.update_wait_time)  # 每1min执行一次
         timer.start()
-
 
 
 class Scheduler(models.Model):
@@ -436,9 +435,9 @@ class Scheduler(models.Model):
 
     # 达到目标温度后待机的房间启动回温算法
     def back_temp(self, room, mode):  # mode=1制热 mode=2制冷,回温算法0.5℃/min，即0.008℃/s
-        if room.state == 4:
-            if mode == 1:
-                room.current_temp -= 0.008
+        if room.state == 4:  # 待机状态
+            if mode == 1:  # 制热
+                room.current_temp -= 0.008  # 停止服务后回温
                 if abs(room.target_temp - room.current_temp) > 1:
                     if self.SQ.objects_num < 3:  # 服务队列没满
                         self.SQ.insert(room)
@@ -446,8 +445,8 @@ class Scheduler(models.Model):
                         self.WQ.insert(room)
                 timer = threading.Timer(1, self.back_temp, [room, 1])  # 每1秒执行一次函数
                 timer.start()
-            else:
-                room.current_temp += 0.008
+            else:  # 制冷
+                room.current_temp += 0.008  # 停止服务后回温
                 if abs(room.target_temp - room.current_temp) > 1 and room.current_temp > room.target_temp:
                     if self.SQ.objects_num < 3:  # 服务队列没满
                         self.SQ.insert(room)
@@ -456,31 +455,27 @@ class Scheduler(models.Model):
                 timer = threading.Timer(1, self.back_temp, [room, 2])  # 每1秒执行一次函数
                 timer.start()
 
-    def check_target_arrive(self):
-        """
-        每分钟，遍历服务队列中的房间，将达到目标温度的房间移出服务队列，状态设为休眠
-        :return:
-        """
-        if self.SQ.objects_num != 0:
-            for room in self.SQ.room_list:
-                if abs(room.current_temp - room.target_temp) < 0.1 or room.current_temp < room.target_temp:
-                    room.state = 4
-                    self.SQ.delete_room(room)
-                    if self.default_target_temp == 22:
+    def check_rooms(self, queue):
+        if queue.objects_num != 0:  # 如果队列不为空
+            for room in queue.rooms.all():
+                # 如果温差小于0.1℃
+                if abs(room.current_temp - room.target_temp) < 0.1:
+                    room.state = 4  # 设置状态为休眠
+                    queue.delete_room(room)
+                    if self.default_target_temp == 22:  # 如果是制热模式
                         self.back_temp(room, 1)
-                    else:
-                        self.back_temp(room, 2)
-        if self.WQ.objects_num != 0:
-            for room in self.WQ.room_list:
-                if abs(room.current_temp - room.target_temp) < 0.1 or room.current_temp < room.target_temp:
-                    room.state = 4
-                    self.WQ.delete_room(room)
-                    if self.default_target_temp == 22:
-                        self.back_temp(room, 1)
-                    else:
+                    else:  # 否则是制冷模式
                         self.back_temp(room, 2)
 
-        timer = threading.Timer(1, self.check_target_arrive)  # 每5秒执行一次check函数
+    def check_target_arrive(self):
+        """
+        每5秒钟，遍历服务队列和等待队列中的所有房间，
+        如果房间已经达到目标温度，就将其从当前队列中移除，并将其状态设置为休眠。
+        """
+        self.check_rooms(self.SQ)  # 检查服务队列中的房间
+        self.check_rooms(self.WQ)  # 检查等待队列中的房间
+
+        timer = threading.Timer(5, self.check_target_arrive)  # 每5秒检查一次
         timer.start()
 
     def scheduling(self):
@@ -491,35 +486,35 @@ class Scheduler(models.Model):
         把SQ的第一个加入WQ，WQ的第一个放入SQ末尾
         :return:
         """
-        if self.WQ.objects_num != 0 and self.SQ.objects_num == 3:
-            temp = self.SQ.room_list[0]
-            self.SQ.delete_room(temp)
-            self.WQ.insert(temp)
-            temp = self.WQ.room_list[0]
-            self.WQ.delete_room(temp)
-            self.SQ.insert(temp)
+        if self.WQ.objects_num != 0 and self.SQ.objects_num == 3:  # 如果等待队列不为空且服务队列有3个元素
+            temp = self.SQ.rooms[0]  # 获取服务队列的第一个房间
+            self.SQ.delete_room(temp)  # 从服务队列中删除该房间
+            self.WQ.insert(temp)  # 将该房间加入等待队列
+            temp = self.WQ.rooms[0]  # 获取等待队列的第一个房间
+            self.WQ.delete_room(temp)  # 从等待队列中删除该房间
+            self.SQ.insert(temp)  # 将该房间加入服务队列
 
-        elif self.WQ.objects_num != 0 and self.SQ.objects_num == 2:
-            temp = self.WQ.room_list[0]
-            self.WQ.delete_room(temp)
-            self.SQ.insert(temp)
+        elif self.WQ.objects_num != 0 and self.SQ.objects_num == 2:  # 如果等待队列不为空且服务队列有2个元素
+            temp = self.WQ.rooms[0]  # 获取等待队列的第一个房间
+            self.WQ.delete_room(temp)  # 从等待队列中删除该房间
+            self.SQ.insert(temp)  # 将该房间加入服务队列
 
-        elif self.WQ.objects_num != 0 and self.SQ.objects_num <= 1:
+        elif self.WQ.objects_num != 0 and self.SQ.objects_num <= 1:  # 如果等待队列不为空且服务队列有1个或没有元素
             i = 1
-            for temp in self.WQ.room_list:
-                if i <= 2:
-                    self.WQ.delete_room(temp)
-                    self.SQ.insert(temp)
+            for temp in self.WQ.rooms.all():  # 遍历等待队列中的所有房间
+                if i <= 2:  # 只处理前两个房间
+                    self.WQ.delete_room(temp)  # 从等待队列中删除该房间
+                    self.SQ.insert(temp)  # 将该房间加入服务队列
                 i += 1
 
-        elif self.WQ.objects_num != 0 and self.SQ.objects_num <= 0:
+        elif self.WQ.objects_num != 0 and self.SQ.objects_num <= 0:  # 如果等待队列不为空且服务队列没有元素
             i = 1
-            for temp in self.WQ.room_list:
-                if i <= 3:
-                    self.WQ.delete_room(temp)
-                    self.SQ.insert(temp)
+            for temp in self.WQ.rooms.all():  # 遍历等待队列中的所有房间
+                if i <= 3:  # 只处理前三个房间
+                    self.WQ.delete_room(temp)  # 从等待队列中删除该房间
+                    self.SQ.insert(temp)  # 将该房间加入服务队列
                 i += 1
-        timer = threading.Timer(120, self.scheduling)  # 每2min执行一次调度函数
+        timer = threading.Timer(120, self.scheduling)  # 每2分钟执行一次调度函数
         timer.start()
 
 
@@ -588,7 +583,7 @@ class Room(models.Model):
 
     def __str__(self):
         return f"room_id:{self.room_id}, current_temp:{self.current_temp}, target_temp:{self.target_temp}, " \
-                  f"fan_speed:{self.fan_speed}, fee:{self.fee}, fee_rate:{self.fee_rate}"
+               f"fan_speed:{self.fan_speed}, fee:{self.fee}, fee_rate:{self.fee_rate}"
 
 
 class StatisticController(models.Model):
@@ -596,16 +591,6 @@ class StatisticController(models.Model):
     - 名称：统计控制器
     - 作用：负责读数据库的控制器，为前台生成详单、账单
     """
-
-    @staticmethod
-    def reception_login(id, password):
-        """
-        感觉放在这里不是特别好，应该放在view层
-        如何登录请看:https://docs.djangoproject.com/zh-hans/2.2/topics/auth/default/#how-to-log-a-user-in
-        :param id:
-        :param password:
-        :return:
-        """
 
     @staticmethod
     def create_rdr(room_id, begin_date, end_date):

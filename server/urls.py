@@ -32,7 +32,7 @@ urlpatterns = [
 
     # 空调管理员
     path('monitor/', monitor, name='monitor'),
-    path('init_submit/', init_submit),
+    path('mon_submit/', mon_submit),
     path('get_monitor_data/', get_monitor_data),
 
     # 前台
