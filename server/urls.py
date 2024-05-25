@@ -29,6 +29,7 @@ urlpatterns = [
     path('low/', change_low),
     path('up/', change_up),
     path('down/', change_down),
+    path('get-fee-temp/', get_fee_temp),
 
     # 空调管理员
     path('monitor/', monitor, name='monitor'),

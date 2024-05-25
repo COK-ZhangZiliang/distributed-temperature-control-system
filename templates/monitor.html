@@ -30,9 +30,9 @@
             <!-- SIDE NAVBAR -->
             <nav class="side-navbar">
                 <ul class="list-unstyled">
-                    <li><a href="#welcome-section"><i class="fa fa-home"></i>Welcome</a></li>
-                    <li><a href="#parameter-settings"><i class="fa fa-cog"></i>房间参数设置</a></li>
-                    <li><a href="#monitor-section"><i class="fa fa-tv"></i>房间状态监控</a></li>
+                    <li><h2 style="text-align:left"><a href="#welcome-section"><i class="fa fa-home"></i>Welcome</a></h2></li>
+                    <li><h2 style="text-align:left"><a href="#parameter-settings"><i class="fa fa-cog"></i>房间参数设置</a></h2></li>
+                    <li><h2 style="text-align:left"><a href="#monitor-section"><i class="fa fa-tv"></i>房间状态监控</a></h2></li>
                 </ul>
             </nav>
 
@@ -77,16 +77,16 @@
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label for="fan_speed">默认风速</label>
-                                        <select class="form-control" id="fan_speed">
-                                            <option value="low">低速</option>
-                                            <option value="middle" selected>中速</option>
-                                            <option value="high">高速</option>
-                                        </select>
+{#                                        <label for="fan_speed">默认风速</label>#}
+{#                                        <select class="form-control" id="fan_speed" name="fan_speed">#}
+{#                                            <option value="low">低速</option>#}
+{#                                            <option value="middle" selected>中速</option>#}
+{#                                            <option value="high">高速</option>#}
+{#                                        </select>#}
                                         <label for="fee_h">费率（元/分钟）</label>
-                                        <input class="form-control" id="fee_h" name="fee_h" value="1">
-                                        <input class="form-control" id="fee_m" name="fee_m" value="0.5">
-                                        <input class="form-control" id="fee_l" name="fee_l" value="0.3">
+                                        <input class="form-control" placeholder="高" id="fee_h" name="fee_h">
+                                        <input class="form-control" placeholder="中" id="fee_m" name="fee_m">
+                                        <input class="form-control" placeholder="低" id="fee_l" name="fee_l">
                                     </div>
                                 </div>
                                 <div class="col-md-4">

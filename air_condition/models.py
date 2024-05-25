@@ -78,13 +78,13 @@ class ServingQueue(RoomQueue):
         timer = threading.Timer(60, self.update_serve_time)  # 每1min执行一次
         timer.start()
 
-    def auto_fee_temp(self, mode):
+    def auto_fee_temp(self, mode, h, m, l):
         """
         自动计费和计温
         :param mode: 制热mode=1,制冷mode=2
-        5元/标准功率
+        1元/标准功率
         对于每分钟：
-            高速1.2标准功率，中速1标准功率，低速0.8标准功率
+            高速'h'标准功率，中速'm'标准功率，低速'l'标准功率
             高速2°C回温度，中速1.5°C回温度，低速1°C回温度
         每秒钟自动计算一次
         :return:
@@ -92,15 +92,16 @@ class ServingQueue(RoomQueue):
         modes = [0, 1, -1]
         for room in self.rooms.all():
             if room.fan_speed == 3:
-                room.fee += 1.2 / 60 * 5
+                room.fee += h / 60
                 room.current_temp += 2 / 60 * modes[mode]
             elif room.fan_speed == 2:
-                room.fee += 1 / 60 * 5
+                room.fee += m / 60
                 room.current_temp += 1.5 / 60 * modes[mode]
             else:
-                room.fee += 0.8 / 60 * 5
+                room.fee += l / 60
                 room.current_temp += 1 / 60 * modes[mode]
-        timer = threading.Timer(1, self.auto_fee_temp, [mode])
+            room.save()
+        timer = threading.Timer(1,  self.auto_fee_temp, [mode, h, m, l])
         timer.start()
 
 
@@ -119,6 +120,7 @@ class WaitingQueue(RoomQueue):
             room.wait_time += 1
         timer = threading.Timer(60, self.update_wait_time)  # 每1min执行一次
         timer.start()
+
 
 
 class Scheduler(models.Model):
@@ -158,13 +160,13 @@ class Scheduler(models.Model):
     default_target_temp = models.IntegerField(verbose_name="默认目标温度", choices=TEMP_CHOICE, default=25)
 
     # 高风速时的费率
-    fee_rate_h = models.FloatField(verbose_name="高风速费率", default=1.0)
+    fee_rate_h = models.FloatField(verbose_name="高风速费率", default=1.2)
 
     # 低风速时的费率
-    fee_rate_l = models.FloatField(verbose_name="低风速费率", default=0.3333)
+    fee_rate_l = models.FloatField(verbose_name="低风速费率", default=0.8)
 
     # 中风速时的费率
-    fee_rate_m = models.FloatField(verbose_name="中风速费率", default=0.5)
+    fee_rate_m = models.FloatField(verbose_name="中风速费率", default=1)
 
     # 等待队列
     WQ = WaitingQueue()
@@ -177,6 +179,9 @@ class Scheduler(models.Model):
     # 存储5个房间,房间开始时的状态都是3--“SHUTDOWN”关机状态
     rooms = models.ManyToManyField('Room', related_name='scheduler')  # Room和Scheduler是多对多关系
 
+    # 空调模式
+    mode = models.IntegerField(verbose_name="空调模式", default=2)
+
     def power_on(self):
         """
         开启中控机，中控机状态修改为”SETMODE“
@@ -186,10 +191,7 @@ class Scheduler(models.Model):
         Room.objects.all().delete()  # 相当于 delete all
         self.state = 3
         #  只要服务队列有房间就计费和计温,制热mode=1,制冷mode=2,
-        if self.default_target_temp == 22:
-            self.SQ.auto_fee_temp(1)
-        else:
-            self.SQ.auto_fee_temp(2)
+        self.SQ.auto_fee_temp(self.mode, self.fee_rate_h, self.fee_rate_m, self.fee_rate_l)
 
         # 开启调度函数
         self.scheduling()
@@ -243,7 +245,10 @@ class Scheduler(models.Model):
             while True:
                 try:
                     # 创建新的Room对象并确保request_id唯一
-                    temp_room = Room.objects.using('default').create(request_id=self.request_id)
+                    temp_room = Room.objects.using('default').create(request_id=self.request_id, mode=self.mode,
+                                                                     target_temp=self.default_target_temp,
+                                                                     fee_rate=self.fee_rate_m,
+                                                                     init_temp=33 if self.mode == 2 else 8)
                     self.request_id += 1  # 确保request_id递增以保证唯一性
                     break
                 except IntegrityError:
@@ -288,7 +293,6 @@ class Scheduler(models.Model):
         for room in self.rooms.all():
             if room.state == 1:  # 在调度队列中
                 self.SQ.set_target_temp(room_id, target_temp)
-                print(room.target_temp)
             elif room.state == 2:  # 在等待队列中
                 self.WQ.set_target_temp(room_id, target_temp)
             else:
@@ -310,12 +314,12 @@ class Scheduler(models.Model):
         :param fan_speed:
         :return:
         """
-        if fan_speed == 1:
+        if fan_speed == 3:
             fee_rate = self.fee_rate_h  # 高风速时的费率
         elif fan_speed == 2:
             fee_rate = self.fee_rate_m  # 中风速时的费率
         elif fan_speed < 1:
-            fee_rate = self.fee_rate_h
+            fee_rate = self.fee_rate_l
         else:
             fee_rate = self.fee_rate_l  # 低风速时的费率
         for room in self.rooms.all():
@@ -356,7 +360,7 @@ class Scheduler(models.Model):
             if room.room_id == room_id:
                 return room
 
-    def set_para(self, temp_high_limit, temp_low_limit, default_target_temp, fee_rate_h, fee_rate_l, fee_rate_m):
+    def set_para(self, temp_high_limit, temp_low_limit, default_target_temp, fee_rate_h, fee_rate_l, fee_rate_m, mode):
         """
         设置中控机参数
         :param temp_high_limit:
@@ -365,6 +369,7 @@ class Scheduler(models.Model):
         :param fee_rate_h:
         :param fee_rate_l:
         :param fee_rate_m:
+        :param mode:
         :return:
         """
         self.temp_high_limit = temp_high_limit
@@ -373,6 +378,7 @@ class Scheduler(models.Model):
         self.fee_rate_h = fee_rate_h
         self.fee_rate_l = fee_rate_l
         self.fee_rate_m = fee_rate_m
+        self.mode = 1 if mode == 'hot' else 2
         return True
 
     def start_up(self):
@@ -437,8 +443,8 @@ class Scheduler(models.Model):
     def back_temp(self, room, mode):  # mode=1制热 mode=2制冷,回温算法0.5℃/min，即0.008℃/s
         if room.state == 4:  # 待机状态
             if mode == 1:  # 制热
-                room.current_temp -= 0.008  # 停止服务后回温
-                if abs(room.target_temp - room.current_temp) > 1:
+                room.current_temp = max(8.0, room.current_temp - 0.08)  # 停止服务后回温
+                if room.current_temp < room.target_temp - 1:
                     if self.SQ.objects_num < 3:  # 服务队列没满
                         self.SQ.insert(room)
                     else:
@@ -446,8 +452,8 @@ class Scheduler(models.Model):
                 timer = threading.Timer(1, self.back_temp, [room, 1])  # 每1秒执行一次函数
                 timer.start()
             else:  # 制冷
-                room.current_temp += 0.008  # 停止服务后回温
-                if abs(room.target_temp - room.current_temp) > 1 and room.current_temp > room.target_temp:
+                room.current_temp = min(32.0, room.current_temp + 0.08)  # 停止服务后回温
+                if room.current_temp > room.target_temp + 1:
                     if self.SQ.objects_num < 3:  # 服务队列没满
                         self.SQ.insert(room)
                     else:
@@ -459,13 +465,11 @@ class Scheduler(models.Model):
         if queue.objects_num != 0:  # 如果队列不为空
             for room in queue.rooms.all():
                 # 如果温差小于0.1℃
-                if abs(room.current_temp - room.target_temp) < 0.1:
+                if self.mode == 1 and room.current_temp >= room.target_temp - 0.1\
+                        or self.mode == 2 and room.current_temp <= room.target_temp + 0.1:
                     room.state = 4  # 设置状态为休眠
                     queue.delete_room(room)
-                    if self.default_target_temp == 22:  # 如果是制热模式
-                        self.back_temp(room, 1)
-                    else:  # 否则是制冷模式
-                        self.back_temp(room, 2)
+                    self.back_temp(room, self.mode)
 
     def check_target_arrive(self):
         """
@@ -563,8 +567,8 @@ class Room(models.Model):
     # 房间状态,默认为3,关机状态
     state = models.IntegerField(verbose_name='服务状态', choices=ROOM_STATE, default=3)
 
-    # 费率,默认为0.5
-    fee_rate = models.FloatField(verbose_name='费率', default=0.5)
+    # 费率,默认为1
+    fee_rate = models.FloatField(verbose_name='费率', default=1)
 
     # 费用,默认为0.0
     fee = models.FloatField(verbose_name='费用', default=0.0)
@@ -580,6 +584,9 @@ class Room(models.Model):
 
     # 调度次数
     scheduling_num = models.IntegerField(verbose_name='调度次数', default=0)
+
+    # 空调模式
+    mode = models.IntegerField(verbose_name="空调模式", default=2)
 
     def __str__(self):
         return f"room_id:{self.room_id}, current_temp:{self.current_temp}, target_temp:{self.target_temp}, " \
