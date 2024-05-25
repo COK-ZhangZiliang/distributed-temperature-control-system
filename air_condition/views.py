@@ -89,6 +89,7 @@ def log_in(request):  # 用户登录界面
         password = request.POST['password']
         usertype = 0
 
+
         with open('air_condition/user.txt', 'r') as file:
             # 逐行读取文件
             for line in file:
@@ -100,6 +101,7 @@ def log_in(request):  # 用户登录界面
                         usertype = columns[2]
 
         if usertype == "1":  # 客户端
+            request.session['username'] = username
             return redirect('client_off')
         elif usertype == "2":  # 前台
             return redirect('recp')
@@ -215,17 +217,18 @@ def reception_return(request):
 
 # ================函数 <顾客界面>  ==============
 def get_room_id(request):
-    s_id = request.session.session_key  # 获取session_id, 无则创建
-    if s_id is None:
-        request.session.create()
-        s_id = request.session.session_key
-
-    if s_id not in room_c.dic:  # 未分配房间号
-        room_c.num = room_c.num + 1
-        room_c.dic[s_id] = room_c.num
-        return room_c.num
-    else:
-        return room_c.dic[s_id]
+    # s_id = request.session.session_key  # 获取session_id, 无则创建
+    # if s_id is None:
+    #     request.session.create()
+    #     s_id = request.session.session_key
+    #
+    # if s_id not in room_c.dic:  # 未分配房间号
+    #     room_c.num = room_c.num + 1
+    #     room_c.dic[s_id] = room_c.num
+    #     return room_c.num
+    # else:
+    #     return room_c.dic[s_id]
+    return int(request.session['username'][4])
 
 
 def client_off(request):  # 第一次访问客户端界面
