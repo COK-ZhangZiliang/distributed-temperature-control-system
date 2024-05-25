@@ -17,5 +17,5 @@ django==5.0.6
 打开终端，运行`python manage.py migrate`，进行数据库迁移  
 再运行`python manage.py runserver`启动服务器
 
-在`url.py`界面设置或添加你的页面
+在`url.py`界面设置或添加你的页面  
 并在`model.py`界面创建一个视图函数来渲染你的html文件

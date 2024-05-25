@@ -1,6 +1,5 @@
 import numpy as np
-from django.contrib.auth import login
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect
 from django.shortcuts import render, redirect
 
 from air_condition.models import Scheduler, StatisticController
@@ -18,7 +17,7 @@ class RoomInfo:  # Room->字典
     dic = {
         "target_temp": "--",
         "init_temp": "--",
-        "current_temp": "--",
+        "current_temp": 0,
         "fan_speed": "--",
         "fee": 0,
         "room_id": 0
@@ -89,7 +88,7 @@ def log_in(request):  # 用户登录界面
         password = request.POST['password']
         usertype = 0
 
-        with open('air_condition/user.txt', 'r') as file:
+        with open('air_condition/user.txt', 'r', encoding='utf8') as file:
             # 逐行读取文件
             for line in file:
                 # 使用split()方法按空格分割每行
@@ -100,6 +99,7 @@ def log_in(request):  # 用户登录界面
                         usertype = columns[2]
 
         if usertype == "1":  # 客户端
+            request.session['username'] = username
             return redirect('client_off')
         elif usertype == "2":  # 前台
             return redirect('recp')
@@ -169,15 +169,21 @@ def reception(request):
         # sc.print_rdr(room_id, begin_date, end_date)
         # return HttpResponseRedirect('/reception_init/')
         # 首先先生成详单
-        StatisticController.print_rdr(room_id, begin_date, end_date)
+        #StatisticController.print_rdr(room_id, begin_date, end_date)
 
         # 获取详单，返回生成的文件
-        from django.http import FileResponse
-        file = open('./result/detailed_list.csv', 'rb')
-        response = FileResponse(file)
-        response['Content-Type'] = 'application/octet-stream'
-        response['Content-Disposition'] = 'attachment;filename="detailed_list.csv"'
-        return response
+        #from django.http import FileResponse
+        #file = open('./result/detailed_list.csv', 'rb')
+        #response = FileResponse(file)
+
+        response = {"房间号": 1, "使用记录1": "30min,2024.5.24 8：00-2024.5.24 8：30", "消费1": "10元",
+                    "使用记录2": "30min,2024.5.24 11：00-2024.5.24 11：30", "消费2": "10元"}
+        #response['Content-Type'] = 'application/octet-stream'
+        #response['Content-Disposition'] = 'attachment;filename="detailed_list.csv"'
+        # return response
+        request.session['info_dict'] = response
+        # 重定向
+        return HttpResponseRedirect('/details')
     else:
         # # 打印账单
         # sc.print_bill(room_id, begin_date, end_date)
@@ -185,30 +191,47 @@ def reception(request):
         """打印账单"""
 
         # 首先先生成账单
-        StatisticController.print_bill(room_id, begin_date, end_date)
+        #StatisticController.print_bill(room_id, begin_date, end_date)
 
         # 获取账单，返回生成的文件
-        from django.http import FileResponse
-        file = open('./result/bill.csv', 'rb')
-        response = FileResponse(file)
-        response['Content-Type'] = 'application/octet-stream'
-        response['Content-Disposition'] = 'attachment;filename="bill.csv"'
-        return response
+        #from django.http import FileResponse
+        #file = open('./result/bill.csv', 'rb')
+        #response = FileResponse(file)
+        response = {"房间号": 1, "使用时长": "1小时", "消费": "20元"}
+        #response['Content-Type'] = 'application/octet-stream'
+        #response['Content-Disposition'] = 'attachment;filename="bill.csv"'
+        request.session['info_dict'] = response
+        # 重定向
+        return HttpResponseRedirect('/bill')
+        #return response
+
+
+def reception_bill(request):
+    return render(request, 'reception_bill.html')
+
+
+def reception_details(request):
+    return render(request, 'reception_details.html')
+
+
+def reception_return(request):
+    return HttpResponseRedirect('/recp')
 
 
 # ================函数 <顾客界面>  ==============
 def get_room_id(request):
-    s_id = request.session.session_key  # 获取session_id, 无则创建
-    if s_id is None:
-        request.session.create()
-        s_id = request.session.session_key
-
-    if s_id not in room_c.dic:  # 未分配房间号
-        room_c.num = room_c.num + 1
-        room_c.dic[s_id] = room_c.num
-        return room_c.num
-    else:
-        return room_c.dic[s_id]
+    # s_id = request.session.session_key  # 获取session_id, 无则创建
+    # if s_id is None:
+    #     request.session.create()
+    #     s_id = request.session.session_key
+    #
+    # if s_id not in room_c.dic:  # 未分配房间号
+    #     room_c.num = room_c.num + 1
+    #     room_c.dic[s_id] = room_c.num
+    #     return room_c.num
+    # else:
+    #     return room_c.dic[s_id]
+    return int(request.session['username'][4])
 
 
 def client_off(request):  # 第一次访问客户端界面

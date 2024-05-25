@@ -38,4 +38,7 @@ urlpatterns = [
     # 前台
     path('recp/', reception_init, name='recp'),
     path('recp_submit/', reception),
+    path('bill/', reception_bill),
+    path('details/', reception_details),
+    path('recp_return/', reception_return),
 ]
