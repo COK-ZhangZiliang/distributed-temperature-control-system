@@ -184,7 +184,7 @@ def reception(request):
         result = FileResponse(file)
         response = {}
         #待补充
-        #response["请求ID"] = result["request_id"]
+        response["请求ID"] = result["request_id"]
 
         request.session['info_dict'] = response
         # 重定向
@@ -252,6 +252,8 @@ def client_on(request):  # 开机后的界面
 def get_fee_temp(request):
     room_id = get_room_id(request)
     room = scheduler.update_room_state(room_id)
+    if room is None:
+        return JsonResponse({'fee': 0.0, 'current_temp': 0.0})
     return JsonResponse({'fee': round(room.fee, 2),
                          'current_temp': round(room.current_temp, 1)})
 
