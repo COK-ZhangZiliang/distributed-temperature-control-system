@@ -91,7 +91,14 @@ button {
     text-align: center;
 }
 
-#temperature {
+#target_temp {
+    width: 185px;
+    height: auto;
+    font-size: 60px;
+
+}
+
+#current_temp {
     width: 185px;
     height: auto;
     font-size: 60px;

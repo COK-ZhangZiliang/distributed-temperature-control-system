@@ -1,3 +1,5 @@
+import os
+
 from django.db import models, IntegrityError
 from django.utils import timezone
 import threading
@@ -21,6 +23,7 @@ class RoomQueue(models.Model):
     """
     queue_type = models.CharField(verbose_name='队列类型', max_length=20, default='serving')
     objects_num = models.IntegerField(verbose_name='队列中对象数目', default=0)
+    rooms = models.ManyToManyField('Room', related_name='RoomQueue')
 
     class Meta:
         abstract = True
@@ -659,8 +662,13 @@ class StatisticController(models.Model):
                        "fan_speed",
                        "fee"]
 
+        # 检查文件夹是否存在，如果不存在则创建
+        folder_path = './result'
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
         # 写入数据
-        with open("./result/detailed_list.csv", "w") as csvFile:
+        with open("./result/detailed_list.csv", "w", encoding='utf8') as csvFile:
             writer = csv.DictWriter(csvFile, file_header)
             writer.writeheader()
             # 写入的内容都是以列表的形式传入函数
@@ -696,7 +704,7 @@ class StatisticController(models.Model):
         """
         fee = StatisticController.create_bill(room_id, begin_date, end_date)
 
-        with open('./result/bill.csv', 'w') as csv_file:
+        with open('./result/bill.csv', 'w', encoding='utf8') as csv_file:
             writer = csv.writer(csv_file)
             writer.writerow(["room_id", "fee"])
             writer.writerow([room_id, fee])
@@ -784,7 +792,7 @@ class StatisticController(models.Model):
             'room_id', 'switch_times', 'detailed_num', 'change_temp_times', 'change_fan_times',
             'schedule_times', 'request_time', 'fee'
         ]
-        with open('./result/report.csv', 'w') as csv_file:
+        with open('./result/report.csv', 'w', encoding='utf8') as csv_file:
             writer = csv.DictWriter(csv_file, header)
 
         writer.writeheader()

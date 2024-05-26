@@ -176,41 +176,30 @@ def reception(request):
     end_date = request.GET['end_date']
     type = request.GET['type']
     if type == "rdr":
-        # 打印详单
-        # sc.print_rdr(room_id, begin_date, end_date)
-        # return HttpResponseRedirect('/reception_init/')
-        # 首先先生成详单
-        # StatisticController.print_rdr(room_id, begin_date, end_date)
 
+        StatisticController.print_rdr(room_id, begin_date, end_date)
         # 获取详单，返回生成的文件
-        # from django.http import FileResponse
-        # file = open('./result/detailed_list.csv', 'rb')
-        # response = FileResponse(file)
+        from django.http import FileResponse
+        file = open('./result/detailed_list.csv', 'rb')
+        result = FileResponse(file)
+        response = {}
+        #待补充
+        response["请求ID"] = result["request_id"]
 
-        response = {"房间号": 1, "使用记录1": "30min,2024.5.24 8：00-2024.5.24 8：30", "消费1": "10元",
-                    "使用记录2": "30min,2024.5.24 11：00-2024.5.24 11：30", "消费2": "10元"}
-        # response['Content-Type'] = 'application/octet-stream'
-        # response['Content-Disposition'] = 'attachment;filename="detailed_list.csv"'
-        # return response
         request.session['info_dict'] = response
         # 重定向
         return HttpResponseRedirect('/details')
     else:
-        # # 打印账单
-        # sc.print_bill(room_id, begin_date, end_date)
-        # return HttpResponseRedirect('/reception_init/')
         """打印账单"""
-
         # 首先先生成账单
-        # StatisticController.print_bill(room_id, begin_date, end_date)
-
+        StatisticController.print_bill(room_id, begin_date, end_date)
         # 获取账单，返回生成的文件
-        # from django.http import FileResponse
-        # file = open('./result/bill.csv', 'rb')
-        # response = FileResponse(file)
-        response = {"房间号": 1, "使用时长": "1小时", "消费": "20元"}
-        # response['Content-Type'] = 'application/octet-stream'
-        # response['Content-Disposition'] = 'attachment;filename="bill.csv"'
+        from django.http import FileResponse
+        file = open('./result/bill.csv', 'rb')
+        result = FileResponse(file)
+        response = {}
+        response["房间号"] = response["room_id"]
+        response["费用"] = response["fee"]
         request.session['info_dict'] = response
         # 重定向
         return HttpResponseRedirect('/bill')
@@ -263,6 +252,8 @@ def client_on(request):  # 开机后的界面
 def get_fee_temp(request):
     room_id = get_room_id(request)
     room = scheduler.update_room_state(room_id)
+    if room is None:
+        return JsonResponse({'fee': 0.0, 'current_temp': 0.0})
     return JsonResponse({'fee': round(room.fee, 2),
                          'current_temp': round(room.current_temp, 1)})
 
