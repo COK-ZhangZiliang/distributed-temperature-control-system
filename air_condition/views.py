@@ -179,19 +179,23 @@ def reception(request):
 
         StatisticController.print_rdr(room_id, begin_date, end_date)
         # 获取详单，返回生成的文件
-        response = {"请求ID": [], "请求时间": [], "房间ID": [], "操作": [], "当前温度": [], "目标温度": [], "风速": [], "费用": []}
+        #response = {"请求ID": [], "请求时间": [], "房间ID": [], "操作": [], "当前温度": [], "目标温度": [], "风速": [], "费用": []}
+        response = []
         with open('./result/detailed_list.csv', 'r', encoding='utf8') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                response["请求ID"].append(row["request_id"])
-                response["请求时间"].append(row["request_time"])
-                response["房间ID"].append(row["room_id"])
-                response["操作"].append(row["operation"])
-                response["当前温度"].append(row["current_temp"])
-                response["目标温度"].append(row["target_temp"])
-                response["风速"].append(row["fan_speed"])
-                response["费用"].append(row["fee"])
-
+                entry = {}
+                entry["请求ID"] = int(row["request_id"])
+                entry["请求时间"] = row["request_time"]
+                entry["房间ID"] = row["room_id"]
+                entry["操作"] = row["operation"]
+                entry["当前温度"] = round(float(row["current_temp"]), 2)
+                entry["目标温度"] = row["target_temp"]
+                entry["风速"] = row["fan_speed"]
+                entry["费用"] = round(float(row["fee"]),4)
+                response.append(entry)
+        response.sort(key=lambda x: x['请求ID'])
+        print(response)
         request.session['info_dict'] = response
         # 重定向
         return HttpResponseRedirect('/details')
@@ -200,12 +204,12 @@ def reception(request):
         # 首先先生成账单
         StatisticController.print_bill(room_id, begin_date, end_date)
         # 获取账单，返回生成的文件
-        response = {"房间ID": [], "费用": []}
+        response = {"房间ID": [], "空调使用费用": []}
         with open('./result/bill.csv', 'r', encoding='utf8') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                response["房间ID"].append(row["room_id"])
-                response["费用"].append(row["fee"])
+                response["房间ID"] = row["room_id"]
+                response["空调使用费用"] = round(float(row["fee"]),2)
         request.session['info_dict'] = response
         # 重定向
         return HttpResponseRedirect('/bill')
