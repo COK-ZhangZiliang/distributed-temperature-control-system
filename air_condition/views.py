@@ -1,7 +1,7 @@
 import numpy as np
 from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
-
+import csv
 from air_condition.models import Scheduler, StatisticController
 
 
@@ -179,12 +179,18 @@ def reception(request):
 
         StatisticController.print_rdr(room_id, begin_date, end_date)
         # 获取详单，返回生成的文件
-        from django.http import FileResponse
-        file = open('./result/detailed_list.csv', 'rb')
-        result = FileResponse(file)
-        response = {}
-        #待补充
-        response["请求ID"] = result["request_id"]
+        response = {"请求ID": [], "请求时间": [], "房间ID": [], "操作": [], "当前温度": [], "目标温度": [], "风速": [], "费用": []}
+        with open('./result/detailed_list.csv', 'r', encoding='utf8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                response["请求ID"].append(row["request_id"])
+                response["请求时间"].append(row["request_time"])
+                response["房间ID"].append(row["room_id"])
+                response["操作"].append(row["operation"])
+                response["当前温度"].append(row["current_temp"])
+                response["目标温度"].append(row["target_temp"])
+                response["风速"].append(row["fan_speed"])
+                response["费用"].append(row["fee"])
 
         request.session['info_dict'] = response
         # 重定向
@@ -194,12 +200,12 @@ def reception(request):
         # 首先先生成账单
         StatisticController.print_bill(room_id, begin_date, end_date)
         # 获取账单，返回生成的文件
-        from django.http import FileResponse
-        file = open('./result/bill.csv', 'rb')
-        result = FileResponse(file)
-        response = {}
-        response["房间号"] = response["room_id"]
-        response["费用"] = response["fee"]
+        response = {"房间ID": [], "费用": []}
+        with open('./result/bill.csv', 'r', encoding='utf8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                response["房间ID"].append(row["room_id"])
+                response["费用"].append(row["fee"])
         request.session['info_dict'] = response
         # 重定向
         return HttpResponseRedirect('/bill')
@@ -246,6 +252,8 @@ def client_off(request):  # 第一次访问客户端界面
 def client_on(request):  # 开机后的界面
     room_id = get_room_id(request)
     room = scheduler.update_room_state(room_id)
+    if room is None:
+        return HttpResponseRedirect('/off/')
     return render(request, 'client-on.html', RoomInfo(room).dic)
 
 
