@@ -98,6 +98,13 @@ button {
 
 }
 
+#temperature_2 {
+    width: 185px;
+    height: auto;
+    font-size: 60px;
+
+}
+
 #outdoor_tmp { /*室外温度*/
     width: auto;
     height: auto;

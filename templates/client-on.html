@@ -84,7 +84,7 @@
                             </div>
                             <div id="temperature_box_unit">
                                 <span id="indoor_tmp">室内温度</span>
-                                <span id="temperature">{{ current_temp }}℃</span>
+                                <span id="temperature_2">{{ current_temp }}℃</span>
                             </div>
                         </div>
 
@@ -102,8 +102,8 @@
                                                 url: '/get-fee-temp/',  // 这个URL应该对应你的get_fee视图函数的URL
                                                 method: 'GET',
                                                 success: function(data) {
-                                                    $('#fee').text('费用：￥' + data.fee);
-                                                    $('#current_temp').text(data.current_temp + '℃');
+                                                    $('#fee').text('费用：￥' + parseFloat(data.fee).toFixed(2));
+                                                    $('#temperature_2').text(parseFloat(data.current_temp).toFixed(1) + '℃');
                                                 }
                                             });
                                         }

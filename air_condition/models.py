@@ -91,6 +91,8 @@ class ServingQueue(RoomQueue):
         """
         modes = [0, 1, -1]
         for room in self.rooms.all():
+            if room.state == 4:
+                continue
             if room.fan_speed == 3:
                 room.fee += h / 60
                 room.current_temp += 2 / 60 * modes[mode]
@@ -248,7 +250,7 @@ class Scheduler(models.Model):
                     temp_room = Room.objects.using('default').create(request_id=self.request_id, mode=self.mode,
                                                                      target_temp=self.default_target_temp,
                                                                      fee_rate=self.fee_rate_m,
-                                                                     init_temp=33 if self.mode == 2 else 8)
+                                                                     init_temp=32 if self.mode == 2 else 8)
                     self.request_id += 1  # 确保request_id递增以保证唯一性
                     break
                 except IntegrityError:
@@ -442,32 +444,37 @@ class Scheduler(models.Model):
     # 达到目标温度后待机的房间启动回温算法
     def back_temp(self, room, mode):  # mode=1制热 mode=2制冷,回温算法0.5℃/min，即0.008℃/s
         if room.state == 4:  # 待机状态
+            print('待机')
             if mode == 1:  # 制热
-                room.current_temp = max(8.0, room.current_temp - 0.08)  # 停止服务后回温
+                room.current_temp = max(8.0, room.current_temp - 0.008)  # 停止服务后回温
                 if room.current_temp < room.target_temp - 1:
                     if self.SQ.objects_num < 3:  # 服务队列没满
                         self.SQ.insert(room)
                     else:
                         self.WQ.insert(room)
+                room.save()
                 timer = threading.Timer(1, self.back_temp, [room, 1])  # 每1秒执行一次函数
                 timer.start()
             else:  # 制冷
-                room.current_temp = min(32.0, room.current_temp + 0.08)  # 停止服务后回温
+                room.current_temp = min(32.0, room.current_temp + 0.008)  # 停止服务后回温
                 if room.current_temp > room.target_temp + 1:
                     if self.SQ.objects_num < 3:  # 服务队列没满
                         self.SQ.insert(room)
                     else:
                         self.WQ.insert(room)
+                room.save()
                 timer = threading.Timer(1, self.back_temp, [room, 2])  # 每1秒执行一次函数
                 timer.start()
 
     def check_rooms(self, queue):
         if queue.objects_num != 0:  # 如果队列不为空
             for room in queue.rooms.all():
-                # 如果温差小于0.1℃
+                # 如果温差于0.1℃
                 if self.mode == 1 and room.current_temp >= room.target_temp - 0.1\
                         or self.mode == 2 and room.current_temp <= room.target_temp + 0.1:
+                    print('休眠')
                     room.state = 4  # 设置状态为休眠
+                    room.save()
                     queue.delete_room(room)
                     self.back_temp(room, self.mode)
 
