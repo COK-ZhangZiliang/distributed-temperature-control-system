@@ -29,10 +29,11 @@ urlpatterns = [
     path('low/', change_low),
     path('up/', change_up),
     path('down/', change_down),
+    path('get-fee-temp/', get_fee_temp),
 
     # 空调管理员
     path('monitor/', monitor, name='monitor'),
-    path('init_submit/', init_submit),
+    path('mon_submit/', mon_submit),
     path('get_monitor_data/', get_monitor_data),
 
     # 前台

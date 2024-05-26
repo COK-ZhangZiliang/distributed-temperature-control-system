@@ -1,8 +1,7 @@
 import numpy as np
-from django.contrib.auth import login
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
-from django.contrib import messages
+
 from air_condition.models import Scheduler, StatisticController
 
 
@@ -18,19 +17,21 @@ class RoomInfo:  # Room->字典
     dic = {
         "target_temp": "--",
         "init_temp": "--",
-        "current_temp": "--",
+        "current_temp": 0.0,
         "fan_speed": "--",
-        "fee": 0,
-        "room_id": 0
+        "fee": 0.0,
+        "room_id": 0,
+        "mode": "--"
     }
 
     def __init__(self, room):
         self.dic["target_temp"] = room.target_temp
         self.dic["init_temp"] = room.init_temp
-        self.dic["current_temp"] = int(room.current_temp)
+        self.dic["current_temp"] = round(float(room.current_temp), 1)
         self.dic["fan_speed"] = speed_ch[room.fan_speed]
-        self.dic["fee"] = int(room.fee)
+        self.dic["fee"] = round(float(room.fee), 2)
         self.dic["room_id"] = room.room_id
+        self.dic["mode"] = '制冷' if room.mode == 2 else '制热'
 
 
 class RoomsInfo:  # 监控器使用
@@ -42,17 +43,19 @@ class RoomsInfo:  # 监控器使用
             "current_temp": [0],
             "fee": [0],
             "target_temp": [0],
-            "fee_rate": [0]
+            "fee_rate": [0],
+            "mode": [""]
         }
         if rooms:
             for room in rooms.all():  # 从1号房开始
                 self.dic["room_id"].append(room.room_id)
                 self.dic["state"].append(state_ch[room.state])
                 self.dic["fan_speed"].append(speed_ch[room.fan_speed])
-                self.dic["current_temp"].append('%.2f' % room.current_temp)
+                self.dic["current_temp"].append('%.1f' % room.current_temp)
                 self.dic["fee"].append('%.2f' % room.fee)
                 self.dic["target_temp"].append(room.target_temp)
                 self.dic["fee_rate"].append(room.fee_rate)
+                self.dic["mode"].append('制冷' if room.mode == 2 else '制热')
 
 
 class RoomBuffer:  # 房间数据缓存,下标从1开始
@@ -78,19 +81,19 @@ room_info = RoomInfo
 scheduler = Scheduler.objects.using('default').create()
 sc = StatisticController
 room_buf = RoomBuffer
-speed_ch = ["", "高速", "中速", "低速"]
+speed_ch = ["", "低速", "中速", "高速"]
 state_ch = ["", "服务中", "等待", "关机", "休眠"]
 
 
 # ============登录=============
 def log_in(request):  # 用户登录界面
+    scheduler.power_on()
     if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['password']
         usertype = 0
 
-
-        with open('air_condition/user.txt', 'r') as file:
+        with open('air_condition/user.txt', 'r', encoding='utf8') as file:
             # 逐行读取文件
             for line in file:
                 # 使用split()方法按空格分割每行
@@ -115,21 +118,40 @@ def log_in(request):  # 用户登录界面
 
 
 # ============================管理员=============================
-def init_submit(request):
+def mon_submit(request):
     request.encoding = 'utf-8'
-    high = int(request.GET['high'])
-    low = int(request.GET['low'])
-    default = int(request.GET['default'])
-    fee_h = float(request.GET['fee_h'])
-    fee_m = float(request.GET['fee_m'])
-    fee_l = float(request.GET['fee_l'])
-    for i in range(1, 6):
-        room_buf.init_temp[i] = int(request.GET['r' + str(i)])
+    print(list(request.GET.items()))
 
-    print(room_buf.init_temp)
-    scheduler.set_para(high, low, default, fee_h, fee_l, fee_m)
+    # 检查每个参数是否存在并且不为空
+    for param in ['mode', 'high', 'low', 'default', 'fee_h', 'fee_m', 'fee_l', 'initial_temp', 'room_number']:
+        if param not in request.GET or not request.GET[param]:
+            return HttpResponse(
+                '<script>alert("Missing or empty parameter: {}");window.location.href="/monitor";</script>'.format(
+                    param))
+
+    try:
+        mode = request.GET['mode']  # 'cold' or 'hot'
+        high = int(request.GET['high'])
+        low = int(request.GET['low'])
+        default = int(request.GET['default'])
+        fee_h = float(request.GET['fee_h'])
+        fee_m = float(request.GET['fee_m'])
+        fee_l = float(request.GET['fee_l'])
+        init_temp = int(request.GET['initial_temp'])
+        room_number = int(request.GET['room_number'])
+    except ValueError:
+        return HttpResponse('<script>alert("Invalid value for a parameter");window.location.href="/monitor";</script>')
+
+    # 检查参数是否满足要求
+    if high < low:
+        return HttpResponse(
+            '<script>alert("High temperature must be greater than or equal to low temperature");window.location.href="/monitor";</script>')
+
+    room_buf.init_temp[room_number] = init_temp
+    scheduler.set_para(high, low, default, fee_h, fee_l, fee_m, mode)
     scheduler.power_on()
     scheduler.start_up()
+
     return HttpResponseRedirect('/monitor')
 
 
@@ -140,19 +162,6 @@ def monitor(request):
 def get_monitor_data(request):
     rooms = scheduler.check_room_state()
     return render(request, 'monitor_data.html', RoomsInfo(rooms).dic)
-
-
-def tst(request):
-    dic = {
-        "room_id": 1,
-        "state": "挂起",
-        "fan_speed": "高速",
-        "current_temp": 28,
-        "fee": 2,
-        "target_temp": 25,
-        "fee_rate": 0.5
-    }
-    return render(request, 'monitor.html')
 
 
 # ===============================前台==============================
@@ -171,16 +180,17 @@ def reception(request):
         # sc.print_rdr(room_id, begin_date, end_date)
         # return HttpResponseRedirect('/reception_init/')
         # 首先先生成详单
-        #StatisticController.print_rdr(room_id, begin_date, end_date)
+        # StatisticController.print_rdr(room_id, begin_date, end_date)
 
         # 获取详单，返回生成的文件
-        #from django.http import FileResponse
-        #file = open('./result/detailed_list.csv', 'rb')
-        #response = FileResponse(file)
+        # from django.http import FileResponse
+        # file = open('./result/detailed_list.csv', 'rb')
+        # response = FileResponse(file)
 
-        response = {"房间号":1,"使用记录1":"30min,2024.5.24 8：00-2024.5.24 8：30","消费1":"10元","使用记录2":"30min,2024.5.24 11：00-2024.5.24 11：30","消费2":"10元"}
-        #response['Content-Type'] = 'application/octet-stream'
-        #response['Content-Disposition'] = 'attachment;filename="detailed_list.csv"'
+        response = {"房间号": 1, "使用记录1": "30min,2024.5.24 8：00-2024.5.24 8：30", "消费1": "10元",
+                    "使用记录2": "30min,2024.5.24 11：00-2024.5.24 11：30", "消费2": "10元"}
+        # response['Content-Type'] = 'application/octet-stream'
+        # response['Content-Disposition'] = 'attachment;filename="detailed_list.csv"'
         # return response
         request.session['info_dict'] = response
         # 重定向
@@ -192,28 +202,32 @@ def reception(request):
         """打印账单"""
 
         # 首先先生成账单
-        #StatisticController.print_bill(room_id, begin_date, end_date)
+        # StatisticController.print_bill(room_id, begin_date, end_date)
 
         # 获取账单，返回生成的文件
-        #from django.http import FileResponse
-        #file = open('./result/bill.csv', 'rb')
-        #response = FileResponse(file)
-        response = {"房间号": 1, "使用时长":"1小时","消费": "20元"}
-        #response['Content-Type'] = 'application/octet-stream'
-        #response['Content-Disposition'] = 'attachment;filename="bill.csv"'
+        # from django.http import FileResponse
+        # file = open('./result/bill.csv', 'rb')
+        # response = FileResponse(file)
+        response = {"房间号": 1, "使用时长": "1小时", "消费": "20元"}
+        # response['Content-Type'] = 'application/octet-stream'
+        # response['Content-Disposition'] = 'attachment;filename="bill.csv"'
         request.session['info_dict'] = response
         # 重定向
         return HttpResponseRedirect('/bill')
-        #return response
+        # return response
+
 
 def reception_bill(request):
     return render(request, 'reception_bill.html')
 
+
 def reception_details(request):
     return render(request, 'reception_details.html')
 
+
 def reception_return(request):
     return HttpResponseRedirect('/recp')
+
 
 # ================函数 <顾客界面>  ==============
 def get_room_id(request):
@@ -246,12 +260,19 @@ def client_on(request):  # 开机后的界面
     return render(request, 'client-on.html', RoomInfo(room).dic)
 
 
+def get_fee_temp(request):
+    room_id = get_room_id(request)
+    room = scheduler.update_room_state(room_id)
+    return JsonResponse({'fee': round(room.fee, 2),
+                         'current_temp': round(room.current_temp, 1)})
+
+
 def power(request):  # 开关机
     room_id = get_room_id(request)
     # 从buf里获取房间状态,关机变开机，开机变关机
     if not room_buf.is_on[room_id]:
         room_buf.is_on[room_id] = True
-        scheduler.request_on(room_id, room_buf.init_temp[room_id])
+        scheduler.request_on(room_id, 30 if scheduler.mode==2 else 10)
         scheduler.set_init_temp(room_id, room_buf.init_temp[room_id])
         return HttpResponseRedirect('/on/')
     else:
@@ -263,7 +284,7 @@ def power(request):  # 开关机
 def change_high(request):  # 高速
     room_id = get_room_id(request)
     if room_buf.is_on[room_id]:  # 开机才能调风速
-        scheduler.change_fan_speed(room_id, 1)
+        scheduler.change_fan_speed(room_id, 3)
         return HttpResponseRedirect('/on/')
     else:
         return HttpResponseRedirect('/off/')
@@ -281,7 +302,7 @@ def change_mid(request):  # 中速
 def change_low(request):  # 低速
     room_id = get_room_id(request)
     if room_buf.is_on[room_id]:  # 开机才能调风速
-        scheduler.change_fan_speed(room_id, 3)
+        scheduler.change_fan_speed(room_id, 1)
         return HttpResponseRedirect('/on/')
     else:
         return HttpResponseRedirect('/off/')
