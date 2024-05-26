@@ -1,12 +1,12 @@
-import os
-
-from django.db import models, IntegrityError
-from django.utils import timezone
-import threading
-import django
 import csv
+import os
+import threading
+
+import django
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import models, IntegrityError
 from django.db.models import Q
+from django.utils import timezone
 
 
 # app先注册
@@ -106,7 +106,7 @@ class ServingQueue(RoomQueue):
                 room.fee += l / 60
                 room.current_temp += 1 / 60 * modes[mode]
             room.save()
-        timer = threading.Timer(1,  self.auto_fee_temp, [mode, h, m, l])
+        timer = threading.Timer(1, self.auto_fee_temp, [mode, h, m, l])
         timer.start()
 
 
@@ -125,7 +125,6 @@ class WaitingQueue(RoomQueue):
             room.wait_time += 1
         timer = threading.Timer(60, self.update_wait_time)  # 每1min执行一次
         timer.start()
-
 
 
 class Scheduler(models.Model):
@@ -473,7 +472,7 @@ class Scheduler(models.Model):
         if queue.objects_num != 0:  # 如果队列不为空
             for room in queue.rooms.all():
                 # 如果温差于0.1℃
-                if self.mode == 1 and room.current_temp >= room.target_temp - 0.1\
+                if self.mode == 1 and room.current_temp >= room.target_temp - 0.1 \
                         or self.mode == 2 and room.current_temp <= room.target_temp + 0.1:
                     print('休眠')
                     room.state = 4  # 设置状态为休眠

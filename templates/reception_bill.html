@@ -3,25 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <title>bill_print</title>
-     <link rel="stylesheet" href="/static/css/receptitionist.css">
+    <link rel="stylesheet" href="/static/css/receptitionist.css">
 </head>
 <body>
-    <div class="top-bar">
-        账单
-    </div>
-    <div class="info-container">
-        {% if request.session.info_dict %}
+<div class="top-bar">
+    账单
+</div>
+<div class="info-container">
+    {% if request.session.info_dict %}
         <ul class="info-list">
             {% for key, value in request.session.info_dict.items %}
-            <li>
-                <strong>{{ key }}</strong><span>: {{ value }}</span>
-            </li>
+                <li>
+                    <strong>{{ key }}</strong><span>: {{ value }}</span>
+                </li>
             {% endfor %}
         </ul>
-        {% endif %}
-    </div>
-    <form action="/recp_return" method="get">
-        <input type="submit" class="button" value="返回">
-    </form>
+    {% endif %}
+</div>
+<form action="/recp_return" method="get">
+    <input type="submit" class="button" value="返回">
+</form>
 </body>
 </html>

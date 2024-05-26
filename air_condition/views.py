@@ -1,7 +1,9 @@
+import csv
+
 import numpy as np
 from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
-import csv
+
 from air_condition.models import Scheduler, StatisticController
 
 
@@ -179,7 +181,8 @@ def reception(request):
 
         StatisticController.print_rdr(room_id, begin_date, end_date)
         # 获取详单，返回生成的文件
-        response = {"请求ID": [], "请求时间": [], "房间ID": [], "操作": [], "当前温度": [], "目标温度": [], "风速": [], "费用": []}
+        response = {"请求ID": [], "请求时间": [], "房间ID": [], "操作": [], "当前温度": [], "目标温度": [], "风速": [],
+                    "费用": []}
         with open('./result/detailed_list.csv', 'r', encoding='utf8') as file:
             reader = csv.DictReader(file)
             for row in reader:
@@ -271,7 +274,7 @@ def power(request):  # 开关机
     # 从buf里获取房间状态,关机变开机，开机变关机
     if not room_buf.is_on[room_id]:
         room_buf.is_on[room_id] = True
-        scheduler.request_on(room_id, 30 if scheduler.mode==2 else 10)
+        scheduler.request_on(room_id, 30 if scheduler.mode == 2 else 10)
         scheduler.set_init_temp(room_id, room_buf.init_temp[room_id])
         return HttpResponseRedirect('/on/')
     else:
